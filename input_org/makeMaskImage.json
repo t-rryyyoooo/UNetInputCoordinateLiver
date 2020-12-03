@@ -1,6 +1,6 @@
 {
-    "data_directory" : "$HOME/tanimoto/data/Abdomen",
-    "save_directory" : "$HOME/tanimoto/data/Abdomen", 
+    "data_directory" : "/mnt/data/Abdomen",
+    "save_directory" : "/mnt/data/Abdomen", 
     "label_name" : "segmentation_resampled.nii.gz",
     "mask_name" : "liver_resampled.mha",
     "mask_num" : 6,

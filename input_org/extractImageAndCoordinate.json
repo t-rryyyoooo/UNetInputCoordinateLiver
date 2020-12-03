@@ -1,6 +1,6 @@
 {
-   "data_directory" : "$HOME/tanimoto/data/Abdomen",
-   "save_directory" : "$HOME/tanimoto/data/patch/Abdomen/no_pad/coordinate/116-132-132-4/liver/mask/image", 
+   "data_directory" : "/mnt/data/Abdomen",
+   "save_directory" : "/sandisk/data/patch/Abdomen/no_pad/coordinate/116-132-132-1-3/liver/mask/image", 
     "image_patch_size" : "116-132-132",
     "label_patch_size" : "28-44-44",
     "overlap" : 1,
