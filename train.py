@@ -5,16 +5,19 @@ import json
 import argparse
 from pathlib import Path
 import sys
-from model.UNet_no_pad_input_coord.system import UNetSystem
-from model.UNet_no_pad_input_coord.modelCheckpoint import BestAndLatestModelCheckpoint as checkpoint
+from model.UNet_no_pad_input_coord_with_nonmask.system import UNetSystem
+from model.UNet_no_pad_input_coord_with_nonmask.modelCheckpoint import BestAndLatestModelCheckpoint as checkpoint
 
 def parseArgs():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("dataset_path", help="/home/vmlab/Desktop/data/patch/Abdomen/28-44-44/image")
+    parser.add_argument("dataset_mask_path", help="/home/vmlab/Desktop/data/patch/Abdomen/28-44-44/image")
+    parser.add_argument("dataset_nonmask_path", help="/home/vmlab/Desktop/data/patch/Abdomen/28-44-44/image")
     parser.add_argument("model_savepath", help="/home/vmlab/Desktop/data/modelweight/Abdomen/28-44-44/mask")
     parser.add_argument("--train_list", help="00 01", nargs="*", default= "00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19")
     parser.add_argument("--val_list", help="20 21", nargs="*", default="20 21 22 23 24 25 26 27 28 29")
+    parser.add_argument("--train_mask_nonmask_rate", nargs=2, default=[1.0, 0.1], type=float)
+    parser.add_argument("--val_mask_nonmask_rate", nargs=2, default=[0.1, 0.1], type=float)
     parser.add_argument("--log", help="/home/vmlab/Desktop/data/log/Abdomen/28-44-44/mask", default="log")
     parser.add_argument("--in_channel_img", help="Input channlel", type=int, default=1)
     parser.add_argument("--in_channel_coord", help="Input channlel", type=int, default=3)
@@ -41,11 +44,18 @@ def main(args):
             "val" : args.val_list
             }
 
+    rate = {
+            "train" : {"mask" : args.train_mask_nonmask_rate[0], "nonmask" : args.train_mask_nonmask_rate[1]},
+            "val" : {"mask" : args.val_mask_nonmask_rate[0], "nonmask" : args.val_mask_nonmask_rate[1]}
+            }
+
     sys.path.append("..")
 
     system = UNetSystem(
-            dataset_path = args.dataset_path,
+            dataset_mask_path = args.dataset_mask_path,
+            dataset_nonmask_path = args.dataset_nonmask_path,
             criteria = criteria,
+            rate = rate,
             in_channel_img = args.in_channel_img,
             in_channel_coord = args.in_channel_coord,
             num_class = args.num_class,
@@ -70,7 +80,8 @@ def main(args):
                 max_epochs = args.epoch,
                 checkpoint_callback = None, 
                 logger = comet_logger,
-                gpus = args.gpu_ids
+                gpus = args.gpu_ids,
+                reload_dataloaders_every_epoch = True
             )
  
     else:
@@ -78,7 +89,8 @@ def main(args):
                 num_sanity_val_steps = 0, 
                 max_epochs = args.epoch,
                 checkpoint_callback = None, 
-                gpus = args.gpu_ids
+                gpus = args.gpu_ids,
+                reload_dataloaders_every_epoch = True
             )
  
     trainer.fit(system)

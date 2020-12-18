@@ -25,6 +25,7 @@ readonly SAVE_DIRECTORY=$(eval echo $(cat ${JSON_FILE} | jq -r ".save_directory"
 readonly IMAGE_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".image_patch_size")
 readonly LABEL_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".label_patch_size")
 readonly OVERLAP=$(cat ${JSON_FILE} | jq -r ".overlap")
+readonly NONMASK=$(cat ${JSON_FILE} | jq -r ".nonmask")
 readonly NUM_ARRAY=$(cat ${JSON_FILE} | jq -r ".num_array[]")
 readonly LOG_FILE=$(eval echo $(cat ${JSON_FILE} | jq -r ".log_file"))
 readonly IMAGE_NAME=$(cat ${JSON_FILE} | jq -r ".image_name")
@@ -64,7 +65,14 @@ do
   mask="--mask_path ${mask_path}"
  fi
 
- python3 extractImageAndCoordinate.py ${image} ${label} ${liver} ${save} --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap ${OVERLAP} ${mask}
+ if [ $NONMASK ];then
+  nonmask="--nonmask"
+
+ else
+  nonmask=""
+ fi
+
+ python3 extractImageAndCoordinate.py ${image} ${label} ${liver} ${save} --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap ${OVERLAP} ${mask} ${nonmask}
 
  # Judge if it works.
  if [ $? -eq 0 ]; then

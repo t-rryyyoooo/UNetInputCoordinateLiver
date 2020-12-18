@@ -87,25 +87,39 @@ class ImageAndCoordinateExtractor():
 
         """ Check mask. """
         self.masked_indices = []
+        self.nonmasked_indices = []
         with tqdm(len(self.image_array_patch_list), desc="Checking mask...", ncols=60) as pbar:
             for i in range(len(self.image_array_patch_list)):
                 if self.mask_array is not None:
                     if (self.mask_array_patch_list[i] == 0).all():
-                        pbar.update(1)
-                        continue
+                        self.nonmasked_indices.append(i)
 
-                self.masked_indices.append(i)
+                    else:
+                        self.masked_indices.append(i)
+
                 pbar.update(1)
 
-    def loadData(self):
+    def loadData(self, nonmask=False):
         if not self.integrate:
-            for i in self.masked_indices:
-                yield self.image_array_patch_list[i], self.label_array_patch_list[i], self.coordinate_array_patch_list[i]
+            if nonmask:
+                for i in self.nonmasked_indices:
+                    yield self.image_array_patch_list[i], self.label_array_patch_list[i], self.coordinate_array_patch_list[i]
+
+            else:
+                for i in self.masked_indices:
+                    yield self.image_array_patch_list[i], self.label_array_patch_list[i], self.coordinate_array_patch_list[i]
         
         else:
-            for i in self.masked_indices:
-                image_array_patch = np.concatenate([self.image_array_patch_list[i][np.newaxis, ...], self.coordinate_array_patch_list[i]])
-                yield image_array_patch, self.label_array_patch_list[i]
+            if nonmask:
+                for i in self.nonmasked_indices:
+                    image_array_patch = np.concatenate([self.image_array_patch_list[i][np.newaxis, ...], self.coordinate_array_patch_list[i]])
+                    yield image_array_patch, self.label_array_patch_list[i]
+
+            else:
+                for i in self.masked_indices:
+                    image_array_patch = np.concatenate([self.image_array_patch_list[i][np.newaxis, ...], self.coordinate_array_patch_list[i]])
+                    yield image_array_patch, self.label_array_patch_list[i]
+
 
     def makePatch(self, image_array, patch_size, slide, desc):
         size = np.array(image_array.shape) - patch_size 
@@ -128,22 +142,7 @@ class ImageAndCoordinateExtractor():
 
         return patch_list
 
-
-    def output(self):
-        print("Output images...")
-        if not self.integrate:
-            if len(self.masked_indices) == len(self.image_array_patch_list):
-                return self.image_array_patch_list, self.label_array_patch_list, self.coordinate_array_patch_list
-
-            else:
-                return [self.image_array_patch_list[i] for i in self.masked_indices], [self.label_array_patch_list[i] for i in self.masked_indices], [self.coordinate_array_patch_list[i] for i in self.masked_indices]
-        else:
-            if len(self.masked_indices) == len(self.image_array_patch_list):
-                return self.image_array_patch_list, self.label_array_patch_list
-            else:
-                return [self.image_array_patch_list[i] for i in self.masked_indices], [self.label_array_patch_list[i] for i in self.masked_indices]
-
-    def save(self, save_path):
+    def save(self, save_path, nonmask=False):
         save_path = Path(save_path)
         save_image_path = save_path / "dummy.npy"
 
@@ -151,27 +150,54 @@ class ImageAndCoordinateExtractor():
             createParentPath(str(save_image_path))
 
         if not self.integrate:
-            with tqdm(total=len(self.masked_indices), desc="Saving image, label and coordinate...", ncols=60) as pbar:
-                for i, (image_array_patch, label_array_patch, coordinate_array_patch)  in enumerate(self.loadData()):
-                    save_image_path = save_path / "image_{:04d}.npy".format(i)
-                    save_label_path = save_path / "label_{:04d}.npy".format(i)
-                    save_coordinate_path = save_path / "coordinate_{:04d}.npy".format(i)
+            if nonmask:
+                with tqdm(total=len(self.nonmasked_indices), desc="Saving image, label and coordinate...", ncols=60) as pbar:
+                    for i, (image_array_patch, label_array_patch, coordinate_array_patch)  in enumerate(self.loadData()):
+                        save_image_path = save_path / "image_{:04d}.npy".format(i)
+                        save_label_path = save_path / "label_{:04d}.npy".format(i)
+                        save_coordinate_path = save_path / "coordinate_{:04d}.npy".format(i)
 
-                    np.save(str(save_image_path), image_array_patch)
-                    np.save(str(save_label_path), label_array_patch)
-                    np.save(str(save_coordinate_path), coordinate_array_patch)
-                    pbar.update(1)
+                        np.save(str(save_image_path), image_array_patch)
+                        np.save(str(save_label_path), label_array_patch)
+                        np.save(str(save_coordinate_path), coordinate_array_patch)
+                        pbar.update(1)
+
+
+            if not nonmask:
+                with tqdm(total=len(self.masked_indices), desc="Saving image, label and coordinate...", ncols=60) as pbar:
+                    for i, (image_array_patch, label_array_patch, coordinate_array_patch)  in enumerate(self.loadData()):
+                        save_image_path = save_path / "image_{:04d}.npy".format(i)
+                        save_label_path = save_path / "label_{:04d}.npy".format(i)
+                        save_coordinate_path = save_path / "coordinate_{:04d}.npy".format(i)
+
+                        np.save(str(save_image_path), image_array_patch)
+                        np.save(str(save_label_path), label_array_patch)
+                        np.save(str(save_coordinate_path), coordinate_array_patch)
+                        pbar.update(1)
 
         else:
-            with tqdm(total=len(self.masked_indices), desc="Saving image integrated with coordinate and label...", ncols=60) as pbar:
-                for i, (image_array_patch, label_array_patch)  in enumerate(self.loadData()):
+            if nonmask:
+                with tqdm(total=len(self.nonmasked_indices), desc="Saving image integrated with coordinate and label...", ncols=60) as pbar:
+                    for i, (image_array_patch, label_array_patch)  in enumerate(self.loadData()):
 
-                    save_image_path = save_path / "image_{:04d}.npy".format(i)
-                    save_label_path = save_path / "label_{:04d}.npy".format(i)
+                        save_image_path = save_path / "image_{:04d}.npy".format(i)
+                        save_label_path = save_path / "label_{:04d}.npy".format(i)
 
-                    np.save(str(save_image_path), image_array_patch)
-                    np.save(str(save_label_path), label_array_patch)
-                    pbar.update(1)
+                        np.save(str(save_image_path), image_array_patch)
+                        np.save(str(save_label_path), label_array_patch)
+                        pbar.update(1)
+
+
+            if not nonmask:
+                with tqdm(total=len(self.masked_indices), desc="Saving image integrated with coordinate and label...", ncols=60) as pbar:
+                    for i, (image_array_patch, label_array_patch)  in enumerate(self.loadData()):
+
+                        save_image_path = save_path / "image_{:04d}.npy".format(i)
+                        save_label_path = save_path / "label_{:04d}.npy".format(i)
+
+                        np.save(str(save_image_path), image_array_patch)
+                        np.save(str(save_label_path), label_array_patch)
+                        pbar.update(1)
 
 
     def restore(self, predict_array_list):

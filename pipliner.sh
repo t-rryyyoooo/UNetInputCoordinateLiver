@@ -25,9 +25,11 @@ readonly RUN_SEGMENTATION=$(cat ${JSON_FILE} | jq -r ".run_segmentation")
 readonly RUN_CALUCULATION=$(cat ${JSON_FILE} | jq -r ".run_caluculation")
 
 # Training input
-readonly DATASET_PATH=$(eval echo $(cat ${JSON_FILE} | jq -r ".dataset_path"))
-dataset_path="${DATASET_PATH}/image"
-save_directory="${DATASET_PATH}/segmentation"
+readonly DATASET_MASk_PATH=$(eval echo $(cat ${JSON_FILE} | jq -r ".dataset_mask_path"))
+readonly DATASET_NONMASk_PATH=$(eval echo $(cat ${JSON_FILE} | jq -r ".dataset_nonmask_path"))
+dataset_mask_path="${DATASET_MASk_PATH}/image"
+dataset_nonmask_path="${DATASET_NONMASk_PATH}/image"
+save_directory="${DATASET_MASk_PATH}/segmentation"
 
 readonly MODEL_SAVEPATH=$(eval echo $(cat ${JSON_FILE} | jq -r ".model_savepath"))
 
@@ -40,6 +42,8 @@ readonly BATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".batch_size")
 readonly DROPOUT=$(cat ${JSON_FILE} | jq -r ".dropout")
 readonly NUM_WORKERS=$(cat ${JSON_FILE} | jq -r ".num_workers")
 readonly EPOCH=$(cat ${JSON_FILE} | jq -r ".epoch")
+readonly TRAIN_MASK_NONMASK_RATE=$(cat ${JSON_FILE} | jq -r ".train_mask_nonmask_rate")
+readonly VAL_MASK_NONMASK_RATE=$(cat ${JSON_FILE} | jq -r ".val_mask_nonmask_rate")
 readonly GPU_IDS=$(cat ${JSON_FILE} | jq -r ".gpu_ids")
 readonly API_KEY=$(cat ${JSON_FILE} | jq -r ".api_key")
 readonly PROJECT_NAME=$(cat ${JSON_FILE} | jq -r ".project_name")
@@ -87,10 +91,13 @@ do
 
  if ${run_training_fold};then
   echo "---------- Training ----------"
-  echo "Dataset_path:${dataset_path}"
+  echo "Dataset_mask_path:${dataset_mask_path}"
+  echo "Dataset_nonmask_path:${dataset_nonmask_path}"
   echo "MODEL_SAVEPATH:${model_savepath}"
   echo "TRAIN_LIST:${TRAIN_LIST}"
   echo "VAL_LIST:${VAL_LIST}"
+  echo "TRAIN_MASK_NONMASK_RATE:${TRAIN_MASK_NONMASK_RATE}"
+  echo "VAL_MASK_NONMASK_RATE:${VAL_MASK_NONMASK_RATE}"
   echo "LOG:${log}"
   echo "IN_CHANNEL_IMG:${IN_CHANNEL_IMG}"
   echo "IN_CHANNEL_COORD:${IN_CHANNEL_COORD}"
@@ -105,7 +112,7 @@ do
   echo "PROJECT_NAME:${PROJECT_NAME}"
   echo "EXPERIMENT_NAME:${experiment_name}"
 
-  python3 train.py ${dataset_path} ${model_savepath} --train_list ${TRAIN_LIST} --val_list ${VAL_LIST} --log ${log} --in_channel_img ${IN_CHANNEL_IMG} --in_channel_coord ${IN_CHANNEL_COORD} --num_class ${NUM_CLASS} --lr ${LEARNING_RATE} --batch_size ${BATCH_SIZE} --num_workers ${NUM_WORKERS} --epoch ${EPOCH} --gpu_ids ${GPU_IDS} --api_key ${API_KEY} --project_name ${PROJECT_NAME} --experiment_name ${experiment_name} --dropout ${DROPOUT}
+  python3 train.py ${dataset_mask_path} ${dataset_nonmask_path} ${model_savepath} --train_list ${TRAIN_LIST} --val_list ${VAL_LIST} --train_mask_nonmask_rate ${TRAIN_MASK_NONMASK_RATE} --val_mask_nonmask_rate ${VAL_MASK_NONMASK_RATE} --log ${log} --in_channel_img ${IN_CHANNEL_IMG} --in_channel_coord ${IN_CHANNEL_COORD} --num_class ${NUM_CLASS} --lr ${LEARNING_RATE} --batch_size ${BATCH_SIZE} --num_workers ${NUM_WORKERS} --epoch ${EPOCH} --gpu_ids ${GPU_IDS} --api_key ${API_KEY} --project_name ${PROJECT_NAME} --experiment_name ${experiment_name} --dropout ${DROPOUT}
 
    if [ $? -ne 0 ];then
     exit 1

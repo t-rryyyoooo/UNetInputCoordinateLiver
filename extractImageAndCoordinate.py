@@ -15,6 +15,7 @@ def ParseArgs():
     parser.add_argument("--mask_path", help="$HOME/Desktop/data/kits19/case_00000/label.mha")
     parser.add_argument("--image_patch_size", help="48-48-16", default="16-48-48")
     parser.add_argument("--label_patch_size", help="48-48-16", default="16-48-48")
+    parser.add_argument("--nonmask", action="store_true")
     parser.add_argument("--overlap", help="1", type=int, default=1)
 
     args = parser.parse_args()
@@ -45,11 +46,11 @@ def main(args):
             mask = mask,
             image_array_patch_size = image_patch_size,
             label_array_patch_size = label_patch_size,
-            overlap = args.overlap
+            overlap = args.overlap,
             )
 
     iace.execute()
-    iace.save(args.save_path)
+    iace.save(args.save_path, nonmask=args.nonmask)
 
     """
     il, ll, cl = iace.output()
