@@ -29,7 +29,7 @@ readonly DATASET_MASk_PATH=$(eval echo $(cat ${JSON_FILE} | jq -r ".dataset_mask
 readonly DATASET_NONMASk_PATH=$(eval echo $(cat ${JSON_FILE} | jq -r ".dataset_nonmask_path"))
 dataset_mask_path="${DATASET_MASk_PATH}/image"
 dataset_nonmask_path="${DATASET_NONMASk_PATH}/image"
-save_directory="${DATASET_MASk_PATH}/segmentation"
+save_directory="${DATASET_MASk_PATH}_nonmask/segmentation"
 
 readonly MODEL_SAVEPATH=$(eval echo $(cat ${JSON_FILE} | jq -r ".model_savepath"))
 

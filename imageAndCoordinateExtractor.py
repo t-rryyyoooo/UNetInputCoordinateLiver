@@ -97,6 +97,9 @@ class ImageAndCoordinateExtractor():
                     else:
                         self.masked_indices.append(i)
 
+                else:
+                    self.masked_indices.append(i)
+
                 pbar.update(1)
 
     def loadData(self, nonmask=False):
