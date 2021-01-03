@@ -16,7 +16,7 @@ class ImageAndCoordinateExtractor():
     Mainly numpy!
     
     """
-    def __init__(self, image, label, center=(0, 0, 0), mask=None, image_array_patch_size=[16, 48, 48], label_array_patch_size=[16, 48, 48], overlap=1, integrate=False):
+    def __init__(self, image, label, center=(0, 0, 0), mask=None, image_array_patch_size=[16, 48, 48], label_array_patch_size=[16, 48, 48], overlap=1, integrate=False, num_ch=1):
         """
         image : original CT image
         label : original label image
@@ -101,6 +101,38 @@ class ImageAndCoordinateExtractor():
                     self.masked_indices.append(i)
 
                 pbar.update(1)
+
+    def stack(self, image_array_list, num_ch, min_value):
+        stacked_image_array_list = []
+        min_array = np.zeros_like(image_array_list[0]) - min_value
+        
+        lower_ch = num_ch // 2
+        upper_ch = (num_ch + 1) // 2
+        for i in range(len(image_array_list)):
+            stacked_image_array_list = []
+            """ Lower image array """
+            for c in range(1, lower_ch + 1):
+                if (i - c) < 0:
+                    part_array = min_array
+                else:
+                    part_array = image_array_list[i - c]
+
+                stacked_image_array_list.append(part_array)
+            
+            """ Center image array """
+            part_array = image_array_list[i]
+            stacked_image_array_list.append(part_array)
+
+            for c in range(1, upper_ch + 1):
+                if (i + c) >= len(image/array/lsit):
+                    part_array = min_array
+                else:
+                    part_array = image_array_list[i + c]
+                
+                stacked_image_array_list.append(part_array)
+
+
+
 
     def loadData(self, nonmask=False):
         if not self.integrate:
