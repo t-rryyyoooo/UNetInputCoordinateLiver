@@ -16,7 +16,7 @@ class ImageAndCoordinateExtractor():
     Mainly numpy!
     
     """
-    def __init__(self, image, label, center=(0, 0, 0), mask=None, image_array_patch_size=[16, 48, 48], label_array_patch_size=[16, 48, 48], overlap=1, integrate=False):
+    def __init__(self, image, label, center=(0, 0, 0), mask=None, image_array_patch_size=[16, 48, 48], label_array_patch_size=[16, 48, 48], overlap=1, integrate=False, stacking=False):
         """
         image : original CT image
         label : original label image
@@ -44,6 +44,7 @@ class ImageAndCoordinateExtractor():
         self.overlap = overlap
         self.slide = self.label_array_patch_size // overlap
         self.integrate = integrate
+        self.stacking = stacking
 
     def execute(self):
         """ Clip image and label. """
@@ -72,12 +73,19 @@ class ImageAndCoordinateExtractor():
         if self.mask_array is not None:
             self.mask_array_patch_list = self.makePatch(self.mask_array, self.label_array_patch_size, self.slide, desc="masks")
 
-        """ Make patch size and slide 4 dimention because coordinate array has 4 dimention. """
+        """ Create stacked image. """
+        if self.stacking:
+            print("Stacking images...")
+            min_value = self.image_array.min()
+            self.image_array_patch_list = self.createStackedImageArrayList(min_value)
+
+        """ Make patch size and slide for 4 dimension because coordinate array has 4 dimention. """
         ndim = self.image_array.ndim
         coordinate_array_patch_size = np.array([ndim] + self.image_array_patch_size.tolist())
         coordinate_slide = np.array([ndim] + self.slide.tolist())
 
         self.coordinate_array_patch_list = self.makePatch(coordinate_array, coordinate_array_patch_size, coordinate_slide, desc="coordinates")
+
         
         """ Confirm if makePatch runs correctly. """
         assert len(self.image_array_patch_list) == len(self.label_array_patch_list) == len(self.coordinate_array_patch_list)
@@ -101,6 +109,82 @@ class ImageAndCoordinateExtractor():
                     self.masked_indices.append(i)
 
                 pbar.update(1)
+
+
+    def checkExistence(self, target, center, lengths):
+        length = lengths[1] * lengths[2]
+        max_length = lengths[0] * lengths[1] * lengths[2]
+        num_z_layer = center // length
+        num_y_layer = center // lengths[2]
+
+        """ Target is in range or not. """
+        if (target < 0) or (max_length <= target):
+            return False
+
+        # Target is the same layer in z axis.
+        if target < (num_z_layer * length) or ((num_z_layer + 1) * length) <= target:
+            return False
+
+        # Left edge judgement.
+        location = center % lengths[1]
+        if location in [i for i in range(3)]:
+            i = 3 - location
+
+            lower_left = center - lengths[1]*3 - 3 
+            left = center - 3 
+            upper_left = center + lengths[1]*3 - 3 
+            if target in [lower_left, left, upper_left]:
+                return False
+
+        # RIght edge judgement.
+        if location in [lengths[1] - i for i in range(1, 4)]:
+            i = 3 - (lengths[1] - location - 1)
+
+            lower_right = center - lengths[1]*3 + 3
+            right = center + 3
+            upper_right = center + lengths[1]*3 + 3
+            if target in [lower_right, right, upper_right]:
+                return False
+
+        return True
+            
+    def createIndicesForStacking(self, i, no_existence_number=-100):
+        sizes = np.array(self.image_array.shape) - self.image_array_patch_size 
+        lengths = [((size + 1) // slide) + 1 for size, slide in zip(sizes, self.slide)]
+        l = lengths[2]
+        #directions = [-l - 1, -l, -l + 1, -1, +1, +l - 1, +l, +l + 1]
+        directions = [-l*3 - 3, -l*3, -l*3 + 3, -3, +3, +l*3 - 3, +l*3, +l*3 + 3]
+        stacked_indices = []
+        stacked_indices.append(i)
+        for direction in directions:
+            d = i + direction
+            existence = self.checkExistence(d, i, lengths)
+            if existence:
+                stacked_indices.append(d)
+            else:
+                stacked_indices.append(no_existence_number)
+
+        return stacked_indices
+
+
+    def createStackedImageArrayList(self, min_value, no_existence_number=-100):
+        min_array = np.zeros_like(self.image_array_patch_list[0]) + min_value
+
+        stacked_image_array_list = []
+        for i in range(len(self.image_array_patch_list)):
+            stacked_image_array = []
+            indices = self.createIndicesForStacking(i)
+            for index in indices:
+                if index == no_existence_number:
+                    stacked_image_array.append(min_array)
+                else:
+                    stacked_image_array.append(self.image_array_patch_list[index])
+
+            stacked_image_array = np.stack(stacked_image_array)
+
+            stacked_image_array_list.append(stacked_image_array)
+
+        return stacked_image_array_list
 
     def loadData(self, nonmask=False):
         if not self.integrate:
@@ -157,14 +241,12 @@ class ImageAndCoordinateExtractor():
                 save_image_path = save_path / "image_{:04d}.npy".format(i)
                 save_label_path = save_path / "label_{:04d}.npy".format(i)
                 save_coordinate_path = save_path / "coordinate_{:04d}.npy".format(i)
-
                 np.save(str(save_image_path), image_array_patch)
                 np.save(str(save_label_path), label_array_patch)
                 np.save(str(save_coordinate_path), coordinate_array_patch)
 
         else:
             for i, (image_array_patch, label_array_patch)  in tqdm(enumerate(self.loadData(nonmask=nonmask))):
-
                 save_image_path = save_path / "image_{:04d}.npy".format(i)
                 save_label_path = save_path / "label_{:04d}.npy".format(i)
 
@@ -176,6 +258,7 @@ class ImageAndCoordinateExtractor():
         predict_array = np.zeros_like(self.label_array)
 
         size = np.array(self.label_array.shape) - self.label_array_patch_size 
+
         indices = []
         for i in range(self.label_array.ndim):
             r = range(0, size[i] + 1, self.slide[i])

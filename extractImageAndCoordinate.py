@@ -17,6 +17,7 @@ def ParseArgs():
     parser.add_argument("--label_patch_size", help="48-48-16", default="16-48-48")
     parser.add_argument("--nonmask", action="store_true")
     parser.add_argument("--overlap", help="1", type=int, default=1)
+    parser.add_argument("--stacking", action="store_true")
 
     args = parser.parse_args()
     return args
@@ -47,6 +48,7 @@ def main(args):
             image_array_patch_size = image_patch_size,
             label_array_patch_size = label_patch_size,
             overlap = args.overlap,
+            stacking = args.stacking
             )
 
     iace.execute()
