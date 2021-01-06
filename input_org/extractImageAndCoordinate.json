@@ -1,9 +1,10 @@
 {
-   "data_directory" : "$HOME/Desktop/data/Abdomen",
-   "save_directory" : "/sandisk/data/patch/Abdomen/no_pad/coordinate/116-132-132-1-3/liver/nonmask/image", 
+   "data_directory" : "$HOME/Documents/lab/imageData/Abdomen",
+   "save_directory" : "$HOME/Desktop/test/patch/Abdomen/no_pad/coordinate/116-132-132-1-3/liver/nonmask/image", 
     "image_patch_size" : "116-132-132",
     "label_patch_size" : "28-44-44",
     "overlap" : 1,
+    "stacking" : true,
     "nonmask" : true,
     "image_name" : "imaging_resampled.nii.gz",
     "label_name" : "segmentation_resampled.nii.gz",
