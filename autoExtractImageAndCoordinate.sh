@@ -25,6 +25,7 @@ readonly SAVE_DIRECTORY=$(eval echo $(cat ${JSON_FILE} | jq -r ".save_directory"
 readonly IMAGE_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".image_patch_size")
 readonly LABEL_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".label_patch_size")
 readonly OVERLAP=$(cat ${JSON_FILE} | jq -r ".overlap")
+readonly STACKING=$(cat ${JSON_FILE} | jq -r ".stacking")
 readonly NONMASK=$(cat ${JSON_FILE} | jq -r ".nonmask")
 readonly NUM_ARRAY=$(cat ${JSON_FILE} | jq -r ".num_array[]")
 readonly LOG_FILE=$(eval echo $(cat ${JSON_FILE} | jq -r ".log_file"))
@@ -55,6 +56,8 @@ do
  echo "Save:${save}"
  echo "IMAGE_PATCH_SIZE:${IMAGE_PATCH_SIZE}"
  echo "LABEL_PATCH_SIZE:${LABEL_PATCH_SIZE}"
+ echo "OVRELAP:${OVERLAP}"
+ echo "STACKING:${STACKING}"
 
  if [ $MASK_NAME = "No" ];then
   echo "Mask:${MASK_PATH}"
@@ -65,14 +68,21 @@ do
   mask="--mask_path ${mask_path}"
  fi
 
- if [ $NONMASK ];then
+ echo "NONMASK:${NONMASK}"
+ if $NONMASK ;then
   nonmask="--nonmask"
 
  else
   nonmask=""
  fi
 
- python3 extractImageAndCoordinate.py ${image} ${label} ${liver} ${save} --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap ${OVERLAP} ${mask} ${nonmask}
+ if $STACKING ;then
+  stacking="--stacking"
+ else
+  stacking=""
+ fi
+
+ python3 extractImageAndCoordinate.py ${image} ${label} ${liver} ${save} --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap ${OVERLAP} ${stacking} ${mask} ${nonmask} 
 
  # Judge if it works.
  if [ $? -eq 0 ]; then

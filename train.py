@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 from model.UNet_no_pad_input_coord_with_nonmask.system import UNetSystem
 from model.UNet_no_pad_input_coord_with_nonmask.modelCheckpoint import BestAndLatestModelCheckpoint as checkpoint
+import time
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -39,6 +40,8 @@ def parseArgs():
     return args
 
 def main(args):
+    start_time = time.time()
+
     criteria = {
             "train" : args.train_list, 
             "val" : args.val_list
@@ -94,6 +97,10 @@ def main(args):
             )
  
     trainer.fit(system)
+
+    end = time.time()
+    message = "Training done. Time: {}".format(end - start)
+    sendToLineNotify(message)
 
 
 if __name__ == "__main__":
