@@ -30,6 +30,8 @@ class ImageAndCoordinateExtractor():
         self.org = image
         self.image_array = sitk.GetArrayFromImage(image)
         self.label_array = sitk.GetArrayFromImage(label)
+        self.min_value = self.image_array.min()
+
         if mask is not None:
             self.mask_array = sitk.GetArrayFromImage(mask)
         else:
@@ -72,12 +74,6 @@ class ImageAndCoordinateExtractor():
         self.label_array_patch_list = self.makePatch(self.label_array, self.label_array_patch_size, self.slide, desc="labels")
         if self.mask_array is not None:
             self.mask_array_patch_list = self.makePatch(self.mask_array, self.label_array_patch_size, self.slide, desc="masks")
-
-        """ Create stacked image. """
-        if self.stacking:
-            print("Stacking images...")
-            min_value = self.image_array.min()
-            self.image_array_patch_list = self.createStackedImageArrayList(min_value)
 
         """ Make patch size and slide for 4 dimension because coordinate array has 4 dimention. """
         ndim = self.image_array.ndim
@@ -167,36 +163,43 @@ class ImageAndCoordinateExtractor():
         return stacked_indices
 
 
-    def createStackedImageArrayList(self, min_value, no_existence_number=-100):
-        min_array = np.zeros_like(self.image_array_patch_list[0]) + min_value
+    def createStackedImageArray(self, target, min_value, no_existence_number=-100):
+        min_array = np.zeros_like(self.image_array_patch_list[target]) + min_value
 
-        stacked_image_array_list = []
-        for i in range(len(self.image_array_patch_list)):
-            stacked_image_array = []
-            indices = self.createIndicesForStacking(i)
-            for index in indices:
-                if index == no_existence_number:
-                    stacked_image_array.append(min_array)
-                else:
-                    stacked_image_array.append(self.image_array_patch_list[index])
+        stacked_image_array = []
+        indices = self.createIndicesForStacking(target)
+        for index in indices:
+            if index == no_existence_number:
+                stacked_image_array.append(min_array)
+            else:
+                stacked_image_array.append(self.image_array_patch_list[index])
 
-            stacked_image_array = np.stack(stacked_image_array)
+        stacked_image_array = np.stack(stacked_image_array)
 
-            stacked_image_array_list.append(stacked_image_array)
-
-        return stacked_image_array_list
+        return stacked_image_array
 
     def loadData(self, nonmask=False):
         if not self.integrate:
             if nonmask:
                 for i in self.nonmasked_indices:
-                    yield self.image_array_patch_list[i], self.label_array_patch_list[i], self.coordinate_array_patch_list[i]
+                    if self.stacking:
+                        image_array_patch = self.createStackedImageArray(i, self.min_value)
+                    else:
+                        image_array_patch = self.image_array_patch_list[i]
+
+                    yield image_array_patch, self.label_array_patch_list[i], self.coordinate_array_patch_list[i]
 
             else:
                 for i in self.masked_indices:
-                    yield self.image_array_patch_list[i], self.label_array_patch_list[i], self.coordinate_array_patch_list[i]
-        
+                    if self.stacking:
+                        image_array_patch = self.createStackedImageArray(i, self.min_value)
+                    else:
+                        image_array_patch = self.image_array_patch_list[i]
+
+                    yield image_array_patch, self.label_array_patch_list[i], self.coordinate_array_patch_list[i]
+
         else:
+            """ You can't use it when you select both stacking and integrate."""
             if nonmask:
                 for i in self.nonmasked_indices:
                     image_array_patch = np.concatenate([self.image_array_patch_list[i][np.newaxis, ...], self.coordinate_array_patch_list[i]])
