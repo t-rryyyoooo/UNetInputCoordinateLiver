@@ -48,39 +48,47 @@ do
  image="${data}/${IMAGE_NAME}"
  label="${data}/${LABEL_NAME}"
  liver="${data}/${LIVER_NAME}"
- save="${SAVE_DIRECTORY}/case_${number}"
+ save="${SAVE_DIRECTORY}"
 
  echo "Image:${image}"
  echo "Label:${label}"
  echo "Liver:${liver}"
- echo "Save:${save}"
  echo "IMAGE_PATCH_SIZE:${IMAGE_PATCH_SIZE}"
  echo "LABEL_PATCH_SIZE:${LABEL_PATCH_SIZE}"
- echo "OVRELAP:${OVERLAP}"
+ echo "OVERLAP:${OVERLAP}"
  echo "STACKING:${STACKING}"
 
  if [ $MASK_NAME = "No" ];then
   echo "Mask:${MASK_PATH}"
   mask=""
+
  else
   mask_path="${data}/${MASK_NAME}"
   echo "Mask:${mask_path}"
   mask="--mask_path ${mask_path}"
- fi
 
- echo "NONMASK:${NONMASK}"
- if $NONMASK ;then
-  nonmask="--nonmask"
+  echo "NONMASK:${NONMASK}"
+  if $NONMASK ;then
+   nonmask="--nonmask"
+   save="${save}/nonmask"
 
- else
-  nonmask=""
+  else
+   nonmask=""
+   save="${save}/mask"
+
+  fi
  fi
 
  if $STACKING ;then
   stacking="--stacking"
+  save="${save}/stacking"
+
  else
   stacking=""
  fi
+
+ save="${save}/image/case_${number}"
+ echo "Save_path:${save}"
 
  python3 extractImageAndCoordinate.py ${image} ${label} ${liver} ${save} --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap ${OVERLAP} ${stacking} ${mask} ${nonmask} 
 
