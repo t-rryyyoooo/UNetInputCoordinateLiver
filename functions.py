@@ -16,7 +16,7 @@ def sendToLineNotify(message):
     if res.status_code == 200:
         print("Suceeded in sending to Line Notify")
     else:
-        pritn("Failed to send")
+        print("Failed to send")
 
 
 def getSizeFromString(string, digit=3):
