@@ -6,6 +6,7 @@ from tqdm import tqdm
 from coordinateArrayCreater import CoordinateArrayCreater
 from itertools import product
 from functions import paddingForNumpy, croppingForNumpy, clippingForNumpy, caluculatePaddingSize, getImageWithMeta, createParentPath
+from utils import PatchGenerator
 
 class ImageAndCoordinateExtractor():
     """
@@ -16,7 +17,7 @@ class ImageAndCoordinateExtractor():
     Mainly numpy!
     
     """
-    def __init__(self, image, label, center=(0, 0, 0), mask=None, image_array_patch_size=[16, 48, 48], label_array_patch_size=[16, 48, 48], overlap=1, integrate=False, stacking=False):
+    def __init__(self, image, label, center=(0, 0, 0), mask=None, image_array_patch_size=[16, 48, 48], label_array_patch_size=[16, 48, 48], overlap=1):
         """
         image : original CT image
         label : original label image
@@ -30,12 +31,12 @@ class ImageAndCoordinateExtractor():
         self.org = image
         self.image_array = sitk.GetArrayFromImage(image)
         self.label_array = sitk.GetArrayFromImage(label)
-        self.min_value = self.image_array.min()
 
+        """ Implementing np.ones_like means the whole area is masked. """
         if mask is not None:
             self.mask_array = sitk.GetArrayFromImage(mask)
         else:
-            self.mask_array = None
+            self.mask_array = np.ones_like(self.image_array)
 
         self.center = center
 
@@ -45,218 +46,120 @@ class ImageAndCoordinateExtractor():
 
         self.overlap = overlap
         self.slide = self.label_array_patch_size // overlap
-        self.integrate = integrate
-        self.stacking = stacking
 
-    def execute(self):
-        """ Clip image and label. """
+        self.makeGenerator()
 
-        """ Caluculate each paddingForNumpy size for label and image to clip correctly. """
-        self.lower_pad_size, self.upper_pad_size = caluculatePaddingSize(np.array(self.label_array.shape), self.image_array_patch_size, self.label_array_patch_size, self.slide)
+    def makeGenerator(self):
+        """ Caluculate paddingForNumpy size for label and image to clip correctly. """
+        self.lower_pad_size, self.upper_pad_size = caluculatePaddingSize(
+                                                    np.array(self.label_array.shape), 
+                                                    self.image_array_patch_size, 
+                                                    self.label_array_patch_size, self.slide
+                                                    )
 
         """ Pad image and label. """
-        self.image_array = paddingForNumpy(self.image_array, self.lower_pad_size[0].tolist(), self.upper_pad_size[0].tolist())
-        self.label_array = paddingForNumpy(self.label_array, self.lower_pad_size[1].tolist(), self.upper_pad_size[1].tolist())
-        if self.mask_array is not None:
-            self.mask_array = paddingForNumpy(self.mask_array, self.lower_pad_size[1].tolist(), self.upper_pad_size[1].tolist())
+        self.image_array = paddingForNumpy(
+                            self.image_array, 
+                            self.lower_pad_size[0].tolist(), 
+                            self.upper_pad_size[0].tolist()
+                            )
+        self.label_array = paddingForNumpy(
+                            self.label_array, 
+                            self.lower_pad_size[1].tolist(), 
+                            self.upper_pad_size[1].tolist()
+                            )
 
+        self.mask_array = paddingForNumpy(
+                            self.mask_array,
+                            self.lower_pad_size[1].tolist(), 
+                            self.upper_pad_size[1].tolist()
+                            )
 
         """ If self.center is not None, get coordinate array. """
         cac = CoordinateArrayCreater(
                 image_array = self.image_array,
                 center = self.center
                 )
+
         cac.execute()
         coordinate_array = cac.getCoordinate(kind="relative")
 
-        """ Clip the image and label to patch size. """
-        self.image_array_patch_list = self.makePatch(self.image_array, self.image_array_patch_size, self.slide, desc="images")
-        self.label_array_patch_list = self.makePatch(self.label_array, self.label_array_patch_size, self.slide, desc="labels")
-        if self.mask_array is not None:
-            self.mask_array_patch_list = self.makePatch(self.mask_array, self.label_array_patch_size, self.slide, desc="masks")
+        """ Make generator for image, label, mask and coordinate. """
+        self.image_patch_array_generator = PatchGenerator(
+                                    self.image_array, 
+                                    self.image_array_patch_size,
+                                    self.slide
+                                )
+        self.label_patch_array_generator = PatchGenerator(
+                                    self.label_array,
+                                    self.label_array_patch_size,
+                                    self.slide
+                                )
+        self.mask_patch_array_generator = PatchGenerator(
+                                self.mask_array,
+                                self.label_array_patch_size,
+                                self.slide
+                                )
 
         """ Make patch size and slide for 4 dimension because coordinate array has 4 dimention. """
         ndim = self.image_array.ndim
-        coordinate_array_patch_size = np.array([ndim] + self.image_array_patch_size.tolist())
-        coordinate_slide = np.array([ndim] + self.slide.tolist())
+        coord_array_patch_size = np.array([ndim] + self.image_array_patch_size.tolist())
+        coord_slide = np.array([ndim] + self.slide.tolist())
 
-        self.coordinate_array_patch_list = self.makePatch(coordinate_array, coordinate_array_patch_size, coordinate_slide, desc="coordinates")
+        self.coord_patch_array_generator = PatchGenerator(
+                                    coordinate_array,
+                                    coord_array_patch_size,
+                                    coord_slide
+                                    )
 
-        
-        """ Confirm if makePatch runs correctly. """
-        assert len(self.image_array_patch_list) == len(self.label_array_patch_list) == len(self.coordinate_array_patch_list)
 
-        if self.mask_array is not None:
-            assert len(self.image_array_patch_list) == len(self.mask_array_patch_list)
+    def generateData(self):
+        """ [1] means patch array because PatchGenerator returns index and patch_array. """
+        for ipa, lpa, cpa, mpa in zip(self.image_patch_array_generator(), self.label_patch_array_generator(), self.coord_patch_array_generator(), self.mask_patch_array_generator()):
 
-        """ Check mask. """
-        self.masked_indices = []
-        self.nonmasked_indices = []
-        with tqdm(len(self.image_array_patch_list), desc="Checking mask...", ncols=60) as pbar:
-            for i in range(len(self.image_array_patch_list)):
-                if self.mask_array is not None:
-                    if (self.mask_array_patch_list[i] == 0).all():
-                        self.nonmasked_indices.append(i)
+            input_index = ipa[0]
+            output_index = lpa[0]
+            yield ipa[1], lpa[1], cpa[1], mpa[1], input_index, output_index
 
-                    else:
-                        self.masked_indices.append(i)
+    def save(self, save_path, patient_id, with_nonmask=False):
+        if not isinstance(patient_id, str):
+            patient_id = str(patient_id)
+
+        save_path = Path(save_path)
+        save_mask_path = save_path / "mask" / "case_{}".format(patient_id.zfill(2))
+        save_mask_path.mkdir(parents=True, exist_ok=True)
+        if with_nonmask:
+            save_nonmask_path = save_path / "nonmask" / "case_{}".format(patient_id.zfill(2))
+            save_nonmask_path.mkdir(parents=True, exist_ok=True)
+
+        if with_nonmask:
+            desc = "Saving masked and nonmasked images, labels and coordinates..."
+        else:
+            desc = "Saving masked images, labels and coordinates..."
+
+        with tqdm(total=self.image_patch_array_generator.__len__(), ncols=100, desc=desc) as pbar:
+            for i, (ipa, lpa, cpa, mpa, _, _) in enumerate(self.generateData()):
+                if (mpa > 0).any():
+                    save_masked_image_path = save_mask_path / "image_{:04d}.npy".format(i)
+                    save_masked_label_path = save_mask_path / "label_{:04d}.npy".format(i)
+                    save_masked_coord_path = save_mask_path / "coord_{:04d}.npy".format(i)
+                    np.save(str(save_masked_image_path), ipa)
+                    np.save(str(save_masked_label_path), lpa)
+                    np.save(str(save_masked_coord_path), cpa)
 
                 else:
-                    self.masked_indices.append(i)
+                    if with_nonmask:
+                        save_nonmasked_image_path = save_nonmask_path / "image_{:04d}.npy".format(i)
+                        save_nonmasked_label_path = save_nonmask_path / "label_{:04d}.npy".format(i)
+                        save_nonmasked_coord_path = save_nonmask_path / "coord_{:04d}.npy".format(i)
+             
+                        np.save(str(save_nonmasked_image_path), ipa)
+                        np.save(str(save_nonmasked_label_path), lpa)
+                        np.save(str(save_nonmasked_coord_path), cpa)
 
                 pbar.update(1)
 
-
-    def checkExistence(self, target, center, lengths):
-        length = lengths[1] * lengths[2]
-        max_length = lengths[0] * lengths[1] * lengths[2]
-        num_z_layer = center // length
-        num_y_layer = center // lengths[2]
-
-        """ Target is in range or not. """
-        if (target < 0) or (max_length <= target):
-            return False
-
-        # Target is the same layer in z axis.
-        if target < (num_z_layer * length) or ((num_z_layer + 1) * length) <= target:
-            return False
-
-        # Left edge judgement.
-        location = center % lengths[1]
-        if location in [i for i in range(3)]:
-            i = 3 - location
-
-            lower_left = center - lengths[1]*3 - 3 
-            left = center - 3 
-            upper_left = center + lengths[1]*3 - 3 
-            if target in [lower_left, left, upper_left]:
-                return False
-
-        # RIght edge judgement.
-        if location in [lengths[1] - i for i in range(1, 4)]:
-            i = 3 - (lengths[1] - location - 1)
-
-            lower_right = center - lengths[1]*3 + 3
-            right = center + 3
-            upper_right = center + lengths[1]*3 + 3
-            if target in [lower_right, right, upper_right]:
-                return False
-
-        return True
-            
-    def createIndicesForStacking(self, i, no_existence_number=-100):
-        sizes = np.array(self.image_array.shape) - self.image_array_patch_size 
-        lengths = [((size + 1) // slide) + 1 for size, slide in zip(sizes, self.slide)]
-        l = lengths[2]
-        #directions = [-l - 1, -l, -l + 1, -1, +1, +l - 1, +l, +l + 1]
-        directions = [-l*3 - 3, -l*3, -l*3 + 3, -3, +3, +l*3 - 3, +l*3, +l*3 + 3]
-        stacked_indices = []
-        stacked_indices.append(i)
-        for direction in directions:
-            d = i + direction
-            existence = self.checkExistence(d, i, lengths)
-            if existence:
-                stacked_indices.append(d)
-            else:
-                stacked_indices.append(no_existence_number)
-
-        return stacked_indices
-
-
-    def createStackedImageArray(self, target, min_value, no_existence_number=-100):
-        min_array = np.zeros_like(self.image_array_patch_list[target]) + min_value
-
-        stacked_image_array = []
-        indices = self.createIndicesForStacking(target)
-        for index in indices:
-            if index == no_existence_number:
-                stacked_image_array.append(min_array)
-            else:
-                stacked_image_array.append(self.image_array_patch_list[index])
-
-        stacked_image_array = np.stack(stacked_image_array)
-
-        return stacked_image_array
-
-    def loadData(self, nonmask=False):
-        if not self.integrate:
-            if nonmask:
-                for i in self.nonmasked_indices:
-                    if self.stacking:
-                        image_array_patch = self.createStackedImageArray(i, self.min_value)
-                    else:
-                        image_array_patch = self.image_array_patch_list[i]
-
-                    yield image_array_patch, self.label_array_patch_list[i], self.coordinate_array_patch_list[i]
-
-            else:
-                for i in self.masked_indices:
-                    if self.stacking:
-                        image_array_patch = self.createStackedImageArray(i, self.min_value)
-                    else:
-                        image_array_patch = self.image_array_patch_list[i]
-
-                    yield image_array_patch, self.label_array_patch_list[i], self.coordinate_array_patch_list[i]
-
-        else:
-            """ You can't use it when you select both stacking and integrate."""
-            if nonmask:
-                for i in self.nonmasked_indices:
-                    image_array_patch = np.concatenate([self.image_array_patch_list[i][np.newaxis, ...], self.coordinate_array_patch_list[i]])
-                    yield image_array_patch, self.label_array_patch_list[i]
-
-            else:
-                for i in self.masked_indices:
-                    image_array_patch = np.concatenate([self.image_array_patch_list[i][np.newaxis, ...], self.coordinate_array_patch_list[i]])
-                    yield image_array_patch, self.label_array_patch_list[i]
-
-
-    def makePatch(self, image_array, patch_size, slide, desc):
-        size = np.array(image_array.shape) - patch_size 
-        indices = []
-        for i in range(image_array.ndim):
-            r = range(0, size[i] + 1, slide[i])
-            indices.append(r)
-        indices = [i for i in product(*indices)]
-
-        patch_list = []
-        with tqdm(total=len(indices), desc="Clipping {}...".format(desc), ncols=60) as pbar:
-            for index in indices:
-                lower_clip_size = np.array(index)
-                upper_clip_size = lower_clip_size + patch_size
-
-                patch = clippingForNumpy(image_array, lower_clip_size, upper_clip_size)
-                patch_list.append(patch)
-
-                pbar.update(1)
-
-        return patch_list
-
-    def save(self, save_path, nonmask=False):
-        save_path = Path(save_path)
-        save_image_path = save_path / "dummy.npy"
-
-        if not save_image_path.parent.exists():
-            createParentPath(str(save_image_path))
-
-        if not self.integrate:
-            for i, (image_array_patch, label_array_patch, coordinate_array_patch)  in tqdm(enumerate(self.loadData(nonmask=nonmask))):
-                save_image_path = save_path / "image_{:04d}.npy".format(i)
-                save_label_path = save_path / "label_{:04d}.npy".format(i)
-                save_coordinate_path = save_path / "coordinate_{:04d}.npy".format(i)
-                np.save(str(save_image_path), image_array_patch)
-                np.save(str(save_label_path), label_array_patch)
-                np.save(str(save_coordinate_path), coordinate_array_patch)
-
-        else:
-            for i, (image_array_patch, label_array_patch)  in tqdm(enumerate(self.loadData(nonmask=nonmask))):
-                save_image_path = save_path / "image_{:04d}.npy".format(i)
-                save_label_path = save_path / "label_{:04d}.npy".format(i)
-
-                np.save(str(save_image_path), image_array_patch)
-                np.save(str(save_label_path), label_array_patch)
-
-
+           
     def restore(self, predict_array_list):
         predict_array = np.zeros_like(self.label_array)
 

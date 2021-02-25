@@ -25,8 +25,7 @@ readonly SAVE_DIRECTORY=$(eval echo $(cat ${JSON_FILE} | jq -r ".save_directory"
 readonly IMAGE_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".image_patch_size")
 readonly LABEL_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".label_patch_size")
 readonly OVERLAP=$(cat ${JSON_FILE} | jq -r ".overlap")
-readonly STACKING=$(cat ${JSON_FILE} | jq -r ".stacking")
-readonly NONMASK=$(cat ${JSON_FILE} | jq -r ".nonmask")
+readonly WITH_NONMASK=$(cat ${JSON_FILE} | jq -r ".with_nonmask")
 readonly NUM_ARRAY=$(cat ${JSON_FILE} | jq -r ".num_array[]")
 readonly LOG_FILE=$(eval echo $(cat ${JSON_FILE} | jq -r ".log_file"))
 readonly IMAGE_NAME=$(cat ${JSON_FILE} | jq -r ".image_name")
@@ -34,8 +33,6 @@ readonly LABEL_NAME=$(cat ${JSON_FILE} | jq -r ".label_name")
 readonly LIVER_NAME=$(cat ${JSON_FILE} | jq -r ".liver_name")
 readonly MASK_NAME=$(cat ${JSON_FILE} | jq -r ".mask_name")
 
-echo "DATA_DIRECTORY:${DATA_DIRECTORY}"
-echo "SAVE_DIRECTORY:${SAVE_DIRECTORY}"
 echo "LOG_FILE:${LOG_FILE}"
 
 # Make directory to save LOG.
@@ -48,15 +45,16 @@ do
  image="${data}/${IMAGE_NAME}"
  label="${data}/${LABEL_NAME}"
  liver="${data}/${LIVER_NAME}"
- save="${SAVE_DIRECTORY}"
+ save="${SAVE_DIRECTORY}/image"
 
  echo "Image:${image}"
  echo "Label:${label}"
  echo "Liver:${liver}"
+ echo "Save:${save}"
  echo "IMAGE_PATCH_SIZE:${IMAGE_PATCH_SIZE}"
  echo "LABEL_PATCH_SIZE:${LABEL_PATCH_SIZE}"
  echo "OVERLAP:${OVERLAP}"
- echo "STACKING:${STACKING}"
+ echo "WITH_NONMASK:${WITH_NONMASK}"
 
  if [ $MASK_NAME = "No" ];then
   echo "Mask:${MASK_PATH}"
@@ -67,30 +65,16 @@ do
   echo "Mask:${mask_path}"
   mask="--mask_path ${mask_path}"
 
-  echo "NONMASK:${NONMASK}"
-  if $NONMASK ;then
-   nonmask="--nonmask"
-   save="${save}/nonmask"
+  if $WITH_NONMASK ;then
+   with_nonmask="--with_nonmask"
 
   else
-   nonmask=""
-   save="${save}/mask"
+   with_nonmask=""
 
   fi
  fi
 
- if $STACKING ;then
-  stacking="--stacking"
-  save="${save}/stacking"
-
- else
-  stacking=""
- fi
-
- save="${save}/image/case_${number}"
- echo "Save_path:${save}"
-
- python3 extractImageAndCoordinate.py ${image} ${label} ${liver} ${save} --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap ${OVERLAP} ${stacking} ${mask} ${nonmask} 
+ python3 extractImageAndCoordinate.py ${image} ${label} ${liver} ${save} ${number} --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap ${OVERLAP} ${mask} ${with_nonmask} 
 
  # Judge if it works.
  if [ $? -eq 0 ]; then

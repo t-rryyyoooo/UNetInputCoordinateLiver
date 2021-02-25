@@ -151,6 +151,15 @@ def clipping(image, lower_clip_index, upper_clip_index):
 
 
 def caluculatePaddingSize(image_size, image_patch, label_patch, slide):
+    if not isinstance(image_size, np.ndarray):
+        image_size = np.array(image_size)
+    if not isinstance(image_size, np.ndarray):
+        image_size = np.array(image_size)
+    if not isinstance(image_size, np.ndarray):
+        image_size = np.array(image_size)
+    if not isinstance(image_size, np.ndarray):
+        image_size = np.array(image_size)
+
     just = (image_size % label_patch) != 0
     label_pad_size = just * (label_patch - (image_size % label_patch)) + (label_patch - slide)
     image_pad_size = label_pad_size + (image_patch - label_patch)
