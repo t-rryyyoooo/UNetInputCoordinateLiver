@@ -57,7 +57,7 @@ do
  echo "WITH_NONMASK:${WITH_NONMASK}"
 
  if [ $MASK_NAME = "No" ];then
-  echo "Mask:${MASK_PATH}"
+  echo "Mask:${MASK_NAME}"
   mask=""
 
  else

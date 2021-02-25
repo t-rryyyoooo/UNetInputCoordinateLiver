@@ -17,7 +17,7 @@ class ImageAndCoordinateExtractor():
     Mainly numpy!
     
     """
-    def __init__(self, image, label, center=(0, 0, 0), mask=None, image_array_patch_size=[16, 48, 48], label_array_patch_size=[16, 48, 48], overlap=1):
+    def __init__(self, image, label, center=(0, 0, 0), mask=None, image_array_patch_size=[16, 48, 48], label_array_patch_size=[16, 48, 48], overlap=1, num_class=14, class_axis=0):
         """
         image : original CT image
         label : original label image
@@ -48,6 +48,12 @@ class ImageAndCoordinateExtractor():
         self.slide = self.label_array_patch_size // overlap
 
         self.makeGenerator()
+
+        """ After implemeting makeGenerator(), self.label is padded to clip correctly. """
+        self.num_class = num_class
+        self.class_axis = class_axis
+        self.predicted_array = np.zeros([num_class] + list(self.label_array.shape))
+        self.counter_array = np.zeros_like(self.label_array)
 
     def makeGenerator(self):
         """ Caluculate paddingForNumpy size for label and image to clip correctly. """
@@ -113,6 +119,8 @@ class ImageAndCoordinateExtractor():
                                     )
 
 
+    def __len__(self):
+        return self.image_patch_array_generator.__len__()
     def generateData(self):
         """ [1] means patch array because PatchGenerator returns index and patch_array. """
         for ipa, lpa, cpa, mpa in zip(self.image_patch_array_generator(), self.label_patch_array_generator(), self.coord_patch_array_generator(), self.mask_patch_array_generator()):
@@ -126,8 +134,10 @@ class ImageAndCoordinateExtractor():
             patient_id = str(patient_id)
 
         save_path = Path(save_path)
+
         save_mask_path = save_path / "mask" / "case_{}".format(patient_id.zfill(2))
         save_mask_path.mkdir(parents=True, exist_ok=True)
+
         if with_nonmask:
             save_nonmask_path = save_path / "nonmask" / "case_{}".format(patient_id.zfill(2))
             save_nonmask_path.mkdir(parents=True, exist_ok=True)
@@ -143,6 +153,7 @@ class ImageAndCoordinateExtractor():
                     save_masked_image_path = save_mask_path / "image_{:04d}.npy".format(i)
                     save_masked_label_path = save_mask_path / "label_{:04d}.npy".format(i)
                     save_masked_coord_path = save_mask_path / "coord_{:04d}.npy".format(i)
+
                     np.save(str(save_masked_image_path), ipa)
                     np.save(str(save_masked_label_path), lpa)
                     np.save(str(save_masked_coord_path), cpa)
@@ -160,38 +171,45 @@ class ImageAndCoordinateExtractor():
                 pbar.update(1)
 
            
-    def restore(self, predict_array_list):
-        predict_array = np.zeros_like(self.label_array)
+    def insertToPredictedArray(self, index, array):
+        """ Insert predicted array (before argmax array) which has probability per class. """
 
-        size = np.array(self.label_array.shape) - self.label_array_patch_size 
+        assert array.ndim == self.predicted_array.ndim
 
-        indices = []
+        predicted_slices = []
+        counter_slices = []
+        s = slice(0, self.num_class)
+        predicted_slices.append(s)
         for i in range(self.label_array.ndim):
-            r = range(0, size[i] + 1, self.slide[i])
-            indices.append(r)
-        indices = np.array([i for i in product(*indices)])
+            s = slice(index[i], index[i] + self.label_array_patch_size[i])
+            predicted_slices.append(s)
+            counter_slices.append(s)
 
-        with tqdm(total=len(predict_array_list), desc="Restoring image...", ncols=60) as pbar:
-            for pre_array, idx in zip(predict_array_list, indices[self.masked_indices]): 
-                slices = []
-                for i in range(self.label_array.ndim):
-                    s = slice(idx[i], idx[i] + self.label_array_patch_size[i])
-                    slices.append(s)
-                slices = tuple(slices)
-
-                predict_array[slices] = pre_array
-                pbar.update(1)
-
-
-        predict_array = croppingForNumpy(predict_array, self.lower_pad_size[1].tolist(), self.upper_pad_size[1].tolist())
-        predict = getImageWithMeta(predict_array, self.org)
-        predict.SetOrigin(self.org.GetOrigin())
+        predicted_slices = tuple(predicted_slices)
+        counter_slices = tuple(counter_slices)
         
 
-        return predict
+        """ Array's shape and counter's array shape are not same, which leads to shape error, so, address it. """
+        s = np.delete(np.arange(array.ndim), self.class_axis)
+        s = np.array(array.shape)[s]
 
+        self.predicted_array[predicted_slices] = array
+        self.counter_array[counter_slices] = np.ones(s)
 
+    def outputRestoredImage(self):
+        """ Usually, this method is used after all of predicted patch array is insert to self.predicted_array with insertToPredictedArray. """
 
+        """ Address division by zero. """
+        self.counter_array = np.where(self.counter_array == 0, 1, self.counter_array)
 
+        self.predicted_array /= self.counter_array
+        self.predicted_array = np.argmax(self.predicted_array, axis=self.class_axis)
+        self.predicted_array = croppingForNumpy(
+                                self.predicted_array, 
+                                self.lower_pad_size[1].tolist(),
+                                self.upper_pad_size[1].tolist()
+                                )
 
+        predicted = getImageWithMeta(self.predicted_array, self.org)
 
+        return predicted
