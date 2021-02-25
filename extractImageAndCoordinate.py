@@ -55,8 +55,9 @@ def main(args):
             class_axis = args.class_axis
             )
 
-    #iace.save(args.save_path, args.patient_id, with_nonmask=args.with_nonmask)
-    """ For testing iace.outputRestoredImage. """
+    iace.save(args.save_path, args.patient_id, with_nonmask=args.with_nonmask)
+    """
+    # For testing iace.outputRestoredImage.
     from tqdm import tqdm
     with tqdm(total=iace.__len__(), ncols=60, desc="Segmenting and restoreing...") as pbar:
         for ipa, lpa, cpa, mpa, _, index in iace.generateData():
@@ -72,6 +73,7 @@ def main(args):
     from functions import DICE
     dice = DICE(la, pa)
     print(dice)
+    """
 
 if __name__ == '__main__':
     args = ParseArgs()

@@ -23,6 +23,8 @@ def ParseArgs():
     parser.add_argument("--image_patch_size", help="48-48-16", default="44-44-28")
     parser.add_argument("--label_patch_size", help="44-44-28", default="44-44-28")
     parser.add_argument("--overlap", help="1", default=1, type=int)
+    parser.add_argument("--num_class", help="14", default=14, type=int)
+    parser.add_argument("--class_axis", help="0", default=0, type=int)
     parser.add_argument("-g", "--gpuid", help="0 1", nargs="*", default=0, type=int)
 
     args = parser.parse_args()
@@ -65,13 +67,12 @@ def main(args):
             image_array_patch_size = image_patch_size, 
             label_array_patch_size = label_patch_size, 
             overlap = args.overlap, 
-            center = liver_center
+            center = liver_center,
+            num_class = args.num_class,
+            class_axis = args.class_axis
             )
 
-    iace.execute()
-
     """ Load model. """
-
     with open(args.modelweightfile, 'rb') as f:
         model = cloudpickle.load(f)
         model = torch.nn.DataParallel(model, device_ids=args.gpuid)
@@ -79,35 +80,31 @@ def main(args):
     model.eval()
 
     """ Segmentation module. """
-
     segmented_array_list = []
-    for image_array, _, coordinate_array in tqdm(iace.loadData(), desc="Segmenting images...", ncols=60):
+    with tqdm(total=iace.__len__(), ncols=60, desc="Segmenting and restoring...") as pbar:
+        for image_patch_array, lpa, coord_patch_array, mask_patch_array, _, index in iace.generateData():
+            if (mask_patch_array > 0).any():
+                while image_patch_array.ndim < 5:
+                    image_patch_array = image_patch_array[np.newaxis, ...]
 
-        #image_array = image_array.transpose(2, 0, 1)
-        while image_array.ndim < 5:
-            image_array = image_array[np.newaxis, ...]
+                while coord_patch_array.ndim < 5:
+                    coord_patch_array = coord_patch_array[np.newaxis, ...]
 
-        while coordinate_array.ndim < 5:
-            coordinate_array = coordinate_array[np.newaxis, ...]
+                image_patch_array = torch.from_numpy(image_patch_array).to(device, dtype=torch.float)
+                coord_patch_array = torch.from_numpy(coord_patch_array).to(device, dtype=torch.float)
+                
+                segmented_array = model(image_patch_array, coord_patch_array).to("cpu").detach().numpy().astype(np.float)
+                segmented_array = np.squeeze(segmented_array)
 
-        image_array = torch.from_numpy(image_array).to(device, dtype=torch.float)
-        coordinate_array = torch.from_numpy(coordinate_array).to(device, dtype=torch.float)
+                iace.insertToPredictedArray(index, segmented_array)
 
-        segmented_array = model(image_array, coordinate_array)
-        segmented_array = segmented_array.to("cpu").detach().numpy().astype(np.float)
-        segmented_array = np.squeeze(segmented_array)
-        segmented_array = np.argmax(segmented_array, axis=0).astype(np.uint8)
-        #segmented_array = segmented_array.transpose(1, 2, 0)
+            pbar.update(1)
 
-        segmented_array_list.append(segmented_array)
-
-    """ Restore module. """
-    segmented = iace.restore(segmented_array_list)
+    segmented = iace.outputRestoredImage()
 
     createParentPath(args.save_path)
     print("Saving image to {}".format(args.save_path))
     sitk.WriteImage(segmented, args.save_path, True)
-
 
 if __name__ == '__main__':
     args = ParseArgs()

@@ -56,6 +56,7 @@ readonly MODEL_NAME=$(eval echo $(cat ${JSON_FILE} | jq -r ".model_name"))
 readonly IMAGE_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".image_patch_size")
 readonly LABEL_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".label_patch_size")
 readonly OVERLAP=$(cat ${JSON_FILE} | jq -r ".overlap")
+readonly CLASS_AXIS=$(cat ${JSON_FILE} | jq -r ".class_axis")
 readonly IMAGE_NAME=$(cat ${JSON_FILE} | jq -r ".image_name")
 readonly LIVER_NAME=$(cat ${JSON_FILE} | jq -r ".liver_name")
 readonly MASK_NAME=$(cat ${JSON_FILE} | jq -r ".mask_name")
@@ -141,6 +142,8 @@ do
    echo "IMAGE_PATCH_SIZE:${IMAGE_PATCH_SIZE}"
    echo "LABEL_PATCH_SIZE:${LABEL_PATCH_SIZE}"
    echo "OVERLAP:${OVERLAP}"
+   echo "NUM_CLASS:${NUM_CLASS}"
+   echo "CLASS_AXIS:${CLASS_AXIS}"
    echo "GPU_IDS:${GPU_IDS}"
 
 
@@ -154,7 +157,7 @@ do
     echo "Mask:${mask_path}"
    fi
 
-    python3 segmentation.py $image $model $liver $save --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap $OVERLAP -g ${GPU_IDS} ${mask}
+    python3 segmentation.py $image $model $liver $save --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap $OVERLAP -g ${GPU_IDS} ${mask} --num_class ${NUM_CLASS} --class_axis ${CLASS_AXIS}
 
    if [ $? -ne 0 ];then
     exit 1

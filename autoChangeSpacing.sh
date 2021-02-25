@@ -45,7 +45,7 @@ do
     echo "SPACING:${SPACING}"
 
     python3 changeSpacing.py ${image_path} ${save_image_path} --spacing ${SPACING}
-    python3 changeSpacing.py ${label_path} ${save_label_path} --spacing ${SPACING} --is_label
+    #python3 changeSpacing.py ${label_path} ${save_label_path} --spacing ${SPACING} --is_label
 
 # Judge if it works.
     if [ $? -eq 0 ]; then
