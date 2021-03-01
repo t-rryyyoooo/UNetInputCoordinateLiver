@@ -52,8 +52,8 @@ class ImageAndCoordinateExtractor():
         """ After implemeting makeGenerator(), self.label is padded to clip correctly. """
         self.num_class = num_class
         self.class_axis = class_axis
-        self.predicted_array = np.zeros([num_class] + list(self.label_array.shape))
-        self.counter_array = np.zeros_like(self.label_array)
+        self.predicted_array = np.zeros([num_class] + list(self.label_array.shape), dtype=np.float)
+        self.counter_array = np.zeros_like(self.label_array, dtype=np.float)
 
     def makeGenerator(self):
         """ Caluculate paddingForNumpy size for label and image to clip correctly. """
@@ -193,8 +193,9 @@ class ImageAndCoordinateExtractor():
         s = np.delete(np.arange(array.ndim), self.class_axis)
         s = np.array(array.shape)[s]
 
-        self.predicted_array[predicted_slices] = array
-        self.counter_array[counter_slices] = np.ones(s)
+        #self.predicted_array[predicted_slices] += array
+        self.predicted_array[predicted_slices] *= array
+        self.counter_array[counter_slices] += np.ones(s)
 
     def outputRestoredImage(self):
         """ Usually, this method is used after all of predicted patch array is insert to self.predicted_array with insertToPredictedArray. """
