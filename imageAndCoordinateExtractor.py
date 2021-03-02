@@ -1,12 +1,17 @@
 import sys
+sys.path.append("..")
 import SimpleITK as sitk
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-from coordinateArrayCreater import CoordinateArrayCreater
+from utils.coordinateProcessing.coordinateArrayCreater import CoordinateArrayCreater
 from itertools import product
-from functions import paddingForNumpy, croppingForNumpy, clippingForNumpy, caluculatePaddingSize, getImageWithMeta, createParentPath
-from utils import PatchGenerator
+from utils.patchGenerator.scanPatchGenerator import ScanPatchGenerator
+from utils.patchGenerator.utils import calculatePaddingSize
+from utils.imageProcessing.clipping import clippingForNumpy
+from utils.imageProcessing.cropping import croppingForNumpy
+from utils.imageProcessing.padding import paddingForNumpy
+from utils.utils import getImageWithMeta, isMasked
 
 class ImageAndCoordinateExtractor():
     """
@@ -57,7 +62,7 @@ class ImageAndCoordinateExtractor():
 
     def makeGenerator(self):
         """ Caluculate paddingForNumpy size for label and image to clip correctly. """
-        self.lower_pad_size, self.upper_pad_size = caluculatePaddingSize(
+        self.lower_pad_size, self.upper_pad_size = calculatePaddingSize(
                                                     np.array(self.label_array.shape), 
                                                     self.image_array_patch_size, 
                                                     self.label_array_patch_size, self.slide
@@ -91,17 +96,17 @@ class ImageAndCoordinateExtractor():
         coordinate_array = cac.getCoordinate(kind="relative")
 
         """ Make generator for image, label, mask and coordinate. """
-        self.image_patch_array_generator = PatchGenerator(
+        self.image_patch_array_generator = ScanPatchGenerator(
                                     self.image_array, 
                                     self.image_array_patch_size,
                                     self.slide
                                 )
-        self.label_patch_array_generator = PatchGenerator(
+        self.label_patch_array_generator = ScanPatchGenerator(
                                     self.label_array,
                                     self.label_array_patch_size,
                                     self.slide
                                 )
-        self.mask_patch_array_generator = PatchGenerator(
+        self.mask_patch_array_generator = ScanPatchGenerator(
                                 self.mask_array,
                                 self.label_array_patch_size,
                                 self.slide
@@ -112,7 +117,7 @@ class ImageAndCoordinateExtractor():
         coord_array_patch_size = np.array([ndim] + self.image_array_patch_size.tolist())
         coord_slide = np.array([ndim] + self.slide.tolist())
 
-        self.coord_patch_array_generator = PatchGenerator(
+        self.coord_patch_array_generator = ScanPatchGenerator(
                                     coordinate_array,
                                     coord_array_patch_size,
                                     coord_slide
@@ -121,6 +126,7 @@ class ImageAndCoordinateExtractor():
 
     def __len__(self):
         return self.image_patch_array_generator.__len__()
+
     def generateData(self):
         """ [1] means patch array because PatchGenerator returns index and patch_array. """
         for ipa, lpa, cpa, mpa in zip(self.image_patch_array_generator(), self.label_patch_array_generator(), self.coord_patch_array_generator(), self.mask_patch_array_generator()):
@@ -149,7 +155,7 @@ class ImageAndCoordinateExtractor():
 
         with tqdm(total=self.image_patch_array_generator.__len__(), ncols=100, desc=desc) as pbar:
             for i, (ipa, lpa, cpa, mpa, _, _) in enumerate(self.generateData()):
-                if (mpa > 0).any():
+                if isMasked(mpa):
                     save_masked_image_path = save_mask_path / "image_{:04d}.npy".format(i)
                     save_masked_label_path = save_mask_path / "label_{:04d}.npy".format(i)
                     save_masked_coord_path = save_mask_path / "coord_{:04d}.npy".format(i)

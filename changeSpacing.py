@@ -1,6 +1,7 @@
 import argparse
 import SimpleITK as sitk
-from functions import resampleSpacing, createParentPath
+from utils.imageProcessing.resample import resampleSpacing
+from pathlib import Path
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -21,7 +22,9 @@ def main(args):
     print("Chage spacing from {} to {}.".format(image.GetSpacing(), resampled_image.GetSpacing()))
 
     createParentPath(args.save_path)
-    sitk.WriteImage(resampled_image, args.save_path, True)
+    save_path = Path(args.save_path)
+    save_path.parents.mkdir(parent=True, exist_ok=True)
+    sitk.WriteImage(resampled_image, str(save_path), True)
 
 if __name__=="__main__":
     args = parseArgs()

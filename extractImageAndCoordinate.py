@@ -1,10 +1,10 @@
 import argparse
+import sys
 import numpy as np
-from pathlib import Path
 import SimpleITK as sitk
 from imageAndCoordinateExtractor import ImageAndCoordinateExtractor
-from centerOfGravityCaluculater import CenterOfGravityCaluculater
-from functions import getImageWithMeta, getSizeFromString
+from utils.coordinateProcessing.centerOfGravityCalculater import CenterOfGravityCalculater
+from utils.utils import getSizeFromString
 
 def ParseArgs():
     parser = argparse.ArgumentParser()
@@ -39,7 +39,7 @@ def main(args):
     image_patch_size = getSizeFromString(args.image_patch_size)
     label_patch_size = getSizeFromString(args.label_patch_size)
 
-    cogc = CenterOfGravityCaluculater(liver)
+    cogc = CenterOfGravityCalculater(liver)
     liver_center = cogc.execute()
 
     print("Liver center", liver_center)
