@@ -94,6 +94,7 @@ class ImageAndCoordinateExtractor():
 
         cac.execute()
         coordinate_array = cac.getCoordinate(kind="relative")
+        self.center = [int(c) for c in self.center]
 
         """ Make generator for image, label, mask and coordinate. """
         self.image_patch_array_generator = ScanPatchGenerator(
