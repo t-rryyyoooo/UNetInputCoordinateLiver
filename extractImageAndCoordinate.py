@@ -70,7 +70,7 @@ def main(args):
     predicted = iace.outputRestoredImage()
     pa = sitk.GetArrayFromImage(predicted)
     la = sitk.GetArrayFromImage(label)
-    from functions import DICE
+    from utils.indicator.DICE import DICE
     dice = DICE(la, pa)
     print(dice)
     """

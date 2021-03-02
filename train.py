@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 from model.UNet_no_pad_input_coord_with_nonmask.system import UNetSystem
 from model.UNet_no_pad_input_coord_with_nonmask.modelCheckpoint import BestAndLatestModelCheckpoint as checkpoint
-from functions import sendToLineNotify
+from utils.utils import sendToLineNotify
 import time
 
 def parseArgs():
