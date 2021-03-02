@@ -45,7 +45,7 @@ do
  image="${data}/${IMAGE_NAME}"
  label="${data}/${LABEL_NAME}"
  liver="${data}/${LIVER_NAME}"
- save="${SAVE_DIRECTORY}/image"
+ save="${SAVE_DIRECTORY}"
 
  echo "Image:${image}"
  echo "Label:${label}"
