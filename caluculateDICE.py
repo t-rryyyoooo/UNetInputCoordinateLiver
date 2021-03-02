@@ -2,8 +2,9 @@ import numpy as np
 import SimpleITK as sitk
 import os
 import sys
+sys.path.append("..")
 import argparse
-from functions import DICE, createParentPath
+from utils.indicator.DICE import DICE
 from pathlib import Path
 from tqdm import tqdm
 import pandas as pd
@@ -17,6 +18,7 @@ def parseArgs():
     parser.add_argument('save_path',help = '~/Desktop/results/DICE.csv')
     parser.add_argument('patientID_list',help = '000 001 002', nargs="*")
     parser.add_argument("--classes", help="3", default=3, type=int) 
+    parser.add_argument("--ignore_classes", help="3", nargs="*", type=int) 
     parser.add_argument("--class_label", help="bg kidney cancer", nargs="*") 
     parser.add_argument("--true_name", help="segmentation.nii.gz", default="segmentation.nii.gz") 
     parser.add_argument("--predict_name", help="label.mha", default="label.mha") 
@@ -48,6 +50,11 @@ def main(args):
 
             true_array = sitk.GetArrayFromImage(true)
             predict_array = sitk.GetArrayFromImage(predict)
+
+            if args.ignore_classes is not None:
+                for ic in args.ignore_classes:
+                    true_array    = np.where(true_array == ic, 0, true_array)
+                    predict_array = np.where(predict_array == ic, 0, predict_array)
          
             dice = DICE(true_array, predict_array)
             whole_DICE.append(dice)
@@ -77,9 +84,10 @@ def main(args):
     df_means = pd.DataFrame(means)
     df = pd.concat([df, df_means], sort=False)
 
-    createParentPath(args.save_path)
-    print("Saving dataframe to {}...".format(args.save_path))
-    df.to_csv(args.save_path, index=False)
+    save_path = Path(args.save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    print("Saving dataframe to {}...".format(str(save_path)))
+    df.to_csv(str(save_path), index=False)
     print("Done.")
 
 if __name__ == '__main__':

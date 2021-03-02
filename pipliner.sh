@@ -63,6 +63,7 @@ readonly MASK_NAME=$(cat ${JSON_FILE} | jq -r ".mask_name")
 readonly SAVE_NAME=$(cat ${JSON_FILE} | jq -r ".save_name")
 
 # Caluculation input
+readonly IGNORE_CLASSES=$(cat ${JSON_FILE} | jq -r ".ignore_classes")
 readonly CSV_SAVEDIR=$(eval echo $(cat ${JSON_FILE} | jq -r ".csv_savedir"))
 readonly CLASS_LABEL=$(cat ${JSON_FILE} | jq -r ".class_label")
 readonly TRUE_NAME=$(cat ${JSON_FILE} | jq -r ".true_name")
@@ -179,6 +180,7 @@ CSV_SAVEPATH="${CSV_SAVEDIR}/${csv_name}.csv"
 echo "---------- Caluculation ----------"
 echo "TRUE_DIRECTORY:${DATA_DIRECTORY}"
 echo "PREDICT_DIRECTORY:${save_directory}"
+echo "IGNORE_CLASSES:${IGNORE_CLASSES}"
 echo "CSV_SAVEPATH:${CSV_SAVEPATH}"
 echo "All_patients:${all_patients[@]}"
 echo "NUM_CLASS:${NUM_CLASS}"
@@ -187,7 +189,7 @@ echo "TRUE_NAME:${TRUE_NAME}"
 echo "PREDICT_NAME:${PREDICT_NAME}"
 
 
-python3 caluculateDICE.py ${DATA_DIRECTORY} ${save_directory} ${CSV_SAVEPATH} ${all_patients} --classes ${NUM_CLASS} --class_label ${CLASS_LABEL} --true_name ${TRUE_NAME} --predict_name ${PREDICT_NAME} 
+python3 caluculateDICE.py ${DATA_DIRECTORY} ${save_directory} ${CSV_SAVEPATH} ${all_patients} --classes ${NUM_CLASS} --class_label ${CLASS_LABEL} --true_name ${TRUE_NAME} --predict_name ${PREDICT_NAME} --ignore_classes ${IGNORE_CLASSES}
 
 if [ $? -ne 0 ];then
  exit 1
