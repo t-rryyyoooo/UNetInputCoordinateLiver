@@ -55,7 +55,7 @@ def main(args):
             class_axis = args.class_axis
             )
 
-    #iace.save(args.save_path, args.patient_id, with_nonmask=args.with_nonmask)
+    iace.save(args.save_path, args.patient_id, with_nonmask=args.with_nonmask)
     """
     # For testing iace.outputRestoredImage.
     from tqdm import tqdm

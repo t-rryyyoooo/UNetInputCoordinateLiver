@@ -10,7 +10,7 @@ import cloudpickle
 from utils.machineLearning.segmentation import Segmenter
 from utils.utils import getImageWithMeta, getSizeFromString, isMasked
 from imageAndCoordinateExtractor import ImageAndCoordinateExtractor
-from coordinateProcessing.centerOfGravityCalculater import CenterOfGravityCalculater
+from utils.coordinateProcessing.centerOfGravityCalculater import CenterOfGravityCalculater
 
 
 def ParseArgs():
@@ -97,7 +97,7 @@ def main(args):
     segmented = iace.outputRestoredImage()
 
     save_path = Path(args.save_path)
-    save_path.parents.mkdir(parent=True, exist_ok=True)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
 
     print("Saving image to {}".format(str(save_path)))
     sitk.WriteImage(segmented, str(save_path), True)
