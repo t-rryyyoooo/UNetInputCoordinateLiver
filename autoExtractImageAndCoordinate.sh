@@ -26,6 +26,8 @@ readonly IMAGE_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".image_patch_size")
 readonly LABEL_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".label_patch_size")
 readonly OVERLAP=$(cat ${JSON_FILE} | jq -r ".overlap")
 readonly WITH_NONMASK=$(cat ${JSON_FILE} | jq -r ".with_nonmask")
+readonly NUM_CLASS=$(cat ${JSON_FILE} | jq -r ".num_class")
+readonly CLASS_AXIS=$(cat ${JSON_FILE} | jq -r ".class_axis")
 readonly NUM_ARRAY=$(cat ${JSON_FILE} | jq -r ".num_array[]")
 readonly LOG_FILE=$(eval echo $(cat ${JSON_FILE} | jq -r ".log_file"))
 readonly IMAGE_NAME=$(cat ${JSON_FILE} | jq -r ".image_name")
@@ -54,6 +56,8 @@ do
  echo "IMAGE_PATCH_SIZE:${IMAGE_PATCH_SIZE}"
  echo "LABEL_PATCH_SIZE:${LABEL_PATCH_SIZE}"
  echo "OVERLAP:${OVERLAP}"
+ echo "NUM_CLASS:${NUM_CLASS}"
+ echo "CLASS_AXIS:${CLASS_AXIS}"
  echo "WITH_NONMASK:${WITH_NONMASK}"
 
  if [ $MASK_NAME = "No" ];then

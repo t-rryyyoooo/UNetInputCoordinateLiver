@@ -4,6 +4,8 @@
     "image_patch_size" : "116-132-132",
     "label_patch_size" : "28-44-44",
     "overlap" : 1,
+    "num_class" : 14,
+    "class_axis" : 0,
     "with_nonmask" : true,
     "image_name" : "imaging_resampled.nii.gz",
     "label_name" : "segmentation_resampled.nii.gz",
