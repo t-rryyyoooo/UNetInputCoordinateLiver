@@ -58,7 +58,7 @@ class ImageAndCoordinateExtractor():
         self.num_class = num_class
         self.class_axis = class_axis
         self.predicted_array = np.ones([num_class] + list(self.label_array.shape), dtype=np.float)
-        self.counter_array = np.ones_like(self.label_array, dtype=np.float)
+        self.counter_array = np.zeros_like(self.label_array, dtype=np.float)
 
     def makeGenerator(self):
         """ Caluculate paddingForNumpy size for label and image to clip correctly. """
@@ -200,7 +200,6 @@ class ImageAndCoordinateExtractor():
         s = np.delete(np.arange(array.ndim), self.class_axis)
         s = np.array(array.shape)[s]
 
-        #self.predicted_array[predicted_slices] += array
         self.predicted_array[predicted_slices] *= array
         self.counter_array[counter_slices] += np.ones(s)
 
@@ -208,7 +207,7 @@ class ImageAndCoordinateExtractor():
         """ Usually, this method is used after all of predicted patch array is insert to self.predicted_array with insertToPredictedArray. """
 
         """ Address division by zero. """
-        #self.counter_array = np.where(self.counter_array == 0, 1, self.counter_array)
+        self.counter_array = np.where(self.counter_array == 0, 1, self.counter_array)
 
         self.predicted_array /= self.counter_array
         self.predicted_array = np.argmax(self.predicted_array, axis=self.class_axis)
