@@ -5,8 +5,10 @@ import json
 import argparse
 from pathlib import Path
 import sys
+sys.path.append("..")
 from model.UNet_no_pad_input_coord_with_nonmask.system import UNetSystem
 from model.UNet_no_pad_input_coord_with_nonmask.modelCheckpoint import BestAndLatestModelCheckpoint as checkpoint
+from functions import sendToLineNotify
 import time
 
 def parseArgs():
@@ -40,7 +42,7 @@ def parseArgs():
     return args
 
 def main(args):
-    start_time = time.time()
+    start = time.time()
 
     criteria = {
             "train" : args.train_list, 
@@ -52,7 +54,6 @@ def main(args):
             "val" : {"mask" : args.val_mask_nonmask_rate[0], "nonmask" : args.val_mask_nonmask_rate[1]}
             }
 
-    sys.path.append("..")
 
     system = UNetSystem(
             dataset_mask_path = args.dataset_mask_path,

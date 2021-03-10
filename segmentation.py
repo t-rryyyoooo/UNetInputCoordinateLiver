@@ -65,7 +65,8 @@ def main(args):
             image_array_patch_size = image_patch_size, 
             label_array_patch_size = label_patch_size, 
             overlap = args.overlap, 
-            center = liver_center
+            center = liver_center,
+            stacking = True
             )
 
     iace.execute()

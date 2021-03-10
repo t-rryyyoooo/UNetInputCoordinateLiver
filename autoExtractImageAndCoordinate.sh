@@ -58,6 +58,15 @@ do
  echo "OVERLAP:${OVERLAP}"
  echo "STACKING:${STACKING}"
 
+ if $STACKING ;then
+  stacking="--stacking"
+  save="${save}/stacking"
+
+ else
+  stacking=""
+ fi
+
+
  if [ $MASK_NAME = "No" ];then
   echo "Mask:${MASK_PATH}"
   mask=""
@@ -77,14 +86,6 @@ do
    save="${save}/mask"
 
   fi
- fi
-
- if $STACKING ;then
-  stacking="--stacking"
-  save="${save}/stacking"
-
- else
-  stacking=""
  fi
 
  save="${save}/image/case_${number}"
