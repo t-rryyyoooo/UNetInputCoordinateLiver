@@ -63,12 +63,6 @@ def main(args):
             label_array_patch_size = label_patch_size, 
             overlap = args.overlap, 
             center = liver_center,
-<<<<<<< HEAD
-            stacking = True
-=======
-            num_class = args.num_class,
-            class_axis = args.class_axis
->>>>>>> ab392a479c3420d4caefad3d8a7db0594b337b19
             )
 
     """ Load model. """

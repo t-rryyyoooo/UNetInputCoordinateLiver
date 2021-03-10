@@ -87,14 +87,7 @@ do
   fi
  fi
 
-<<<<<<< HEAD
- save="${save}/image/case_${number}"
- echo "Save_path:${save}"
-
- python3 extractImageAndCoordinate.py ${image} ${label} ${liver} ${save} --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap ${OVERLAP} ${stacking} ${mask} ${nonmask} 
-=======
  python3 extractImageAndCoordinate.py ${image} ${label} ${liver} ${save} ${number} --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap ${OVERLAP} ${mask} ${with_nonmask} 
->>>>>>> ab392a479c3420d4caefad3d8a7db0594b337b19
 
  # Judge if it works.
  if [ $? -eq 0 ]; then
