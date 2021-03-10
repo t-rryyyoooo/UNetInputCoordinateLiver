@@ -1,7 +1,8 @@
 import argparse
 import SimpleITK as sitk
 import numpy as np
-from functions import getImageWithMeta, createParentPath
+from pathlib import Path
+from utils.utils import getImageWithMeta
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -24,9 +25,10 @@ def main(args):
         mask_array = (label_array == args.mask_number).astype(np.int)
 
     mask = getImageWithMeta(mask_array, label)
-    createParentPath(args.save_path)
-    print("Saving mask image to {} ...".format(args.save_path))
-    sitk.WriteImage(mask, args.save_path, True)
+    save_path = Path(args.save_path)
+    save_path.parents.mkdir(parent=True, exist_ok=True)
+    print("Saving mask image to {} ...".format(str(save_path)))
+    sitk.WriteImage(mask, str(save_path), True)
     print("Done")
 
 if __name__ == "__main__":

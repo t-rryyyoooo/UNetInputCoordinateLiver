@@ -27,7 +27,7 @@ readonly IMAGE_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".image_patch_size")
 readonly LABEL_PATCH_SIZE=$(cat ${JSON_FILE} | jq -r ".label_patch_size")
 readonly OVERLAP=$(cat ${JSON_FILE} | jq -r ".overlap")
 readonly IMAGE_NAME=$(cat ${JSON_FILE} | jq -r ".image_name")
-readonly MASK_NAME=$(cat ${JSON_FILE} | jq -r ".mask_name")
+readonly LIVER_NAME=$(cat ${JSON_FILE} | jq -r ".liver_name")
 readonly SAVE_NAME=$(cat ${JSON_FILE} | jq -r ".save_name")
 readonly NUM_ARRAY=$(cat ${JSON_FILE} | jq -r ".num_array[]")
 readonly GPU_ID=$(cat ${JSON_FILE} | jq -r ".gpu_id")
@@ -37,18 +37,18 @@ for number in ${NUM_ARRAY[@]}
 do
  save="${SAVE_DIRECTORY}/case_${number}/${SAVE_NAME}"
  image="${DATA_DIRECTORY}/case_${number}/${IMAGE_NAME}"
- mask="${DATA_DIRECTORY}/case_${number}/${MASK_NAME}"
+ liver="${DATA_DIRECTORY}/case_${number}/${LIVER_NAME}"
 
  echo "Image:${image}"
  echo "WEIGHT:${WEIGHT}"
- echo "Mask:${mask}"
+ echo "liver:${liver}"
  echo "Save:${save}"
  echo "IMAGE_PATCH_SIZE:${IMAGE_PATCH_SIZE}"
  echo "LABEL_PATCH_SIZE:${LABEL_PATCH_SIZE}"
  echo "OVERLAP:${OVERLAP}"
  echo "GPU_ID:${GPU_ID}"
 
- python3 segmentation.py $image $WEIGHT $save --mask_path $mask --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap $OVERLAP -g ${GPU_ID}
+ python3 segmentation.py $image $WEIGHT $liver $save --mask_path $mask --image_patch_size ${IMAGE_PATCH_SIZE} --label_patch_size ${LABEL_PATCH_SIZE} --overlap $OVERLAP -g ${GPU_ID}
 
 
 done

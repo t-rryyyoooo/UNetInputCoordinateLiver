@@ -1,15 +1,16 @@
 import SimpleITK as sitk
 import sys
+sys.path.append("..")
 import numpy as np
 import argparse
-from functions import createParentPath, getImageWithMeta, getSizeFromString
 from pathlib import Path
-from imageAndCoordinateExtractor import ImageAndCoordinateExtractor
-from centerOfGravityCaluculater import CenterOfGravityCaluculater
 from tqdm import tqdm
 import torch
 import cloudpickle
-import re
+from utils.machineLearning.segmentation import Segmenter
+from utils.utils import getImageWithMeta, getSizeFromString, isMasked
+from imageAndCoordinateExtractor import ImageAndCoordinateExtractor
+from utils.coordinateProcessing.centerOfGravityCalculater import CenterOfGravityCalculater
 
 
 def ParseArgs():
@@ -23,17 +24,15 @@ def ParseArgs():
     parser.add_argument("--image_patch_size", help="48-48-16", default="44-44-28")
     parser.add_argument("--label_patch_size", help="44-44-28", default="44-44-28")
     parser.add_argument("--overlap", help="1", default=1, type=int)
+    parser.add_argument("--num_class", help="14", default=14, type=int)
+    parser.add_argument("--class_axis", help="0", default=0, type=int)
     parser.add_argument("-g", "--gpuid", help="0 1", nargs="*", default=0, type=int)
 
     args = parser.parse_args()
     return args
 
 def main(args):
-    sys.path.append("..")
-    use_cuda = torch.cuda.is_available() and True
-    device = torch.device("cuda" if use_cuda else "cpu")
-    """ Slice module. """
-
+    """ Read images. """
     image = sitk.ReadImage(args.image_path)
     liver = sitk.ReadImage(args.liver_path)
     if args.mask_path is not None:
@@ -41,7 +40,7 @@ def main(args):
     else:
         mask = None
 
-    """ Dummy image """
+    """ Dummy image for prediction"""
     label = sitk.Image(image.GetSize(), sitk.sitkInt8)
     label.SetOrigin(image.GetOrigin())
     label.SetDirection(image.GetDirection())
@@ -49,11 +48,9 @@ def main(args):
 
     """ Get the patch size from string."""
     image_patch_size = getSizeFromString(args.image_patch_size)
-
-    """ Get the patch size from string."""
     label_patch_size = getSizeFromString(args.label_patch_size)
 
-    cogc = CenterOfGravityCaluculater(liver)
+    cogc = CenterOfGravityCalculater(liver)
     liver_center = cogc.execute()
 
     print("Liver center: ", liver_center)
@@ -66,13 +63,15 @@ def main(args):
             label_array_patch_size = label_patch_size, 
             overlap = args.overlap, 
             center = liver_center,
+<<<<<<< HEAD
             stacking = True
+=======
+            num_class = args.num_class,
+            class_axis = args.class_axis
+>>>>>>> ab392a479c3420d4caefad3d8a7db0594b337b19
             )
 
-    iace.execute()
-
     """ Load model. """
-
     with open(args.modelweightfile, 'rb') as f:
         model = cloudpickle.load(f)
         model = torch.nn.DataParallel(model, device_ids=args.gpuid)
@@ -80,35 +79,32 @@ def main(args):
     model.eval()
 
     """ Segmentation module. """
+    use_cuda = torch.cuda.is_available() and True
+    device = torch.device("cuda" if use_cuda else "cpu")
+    segmenter = Segmenter(
+                    model,
+                    num_input_array = 2,
+                    ndim = 5,
+                    device = device
+                    )
 
-    segmented_array_list = []
-    for image_array, _, coordinate_array in tqdm(iace.loadData(), desc="Segmenting images...", ncols=60):
+    with tqdm(total=iace.__len__(), ncols=60, desc="Segmenting and restoring...") as pbar:
+        for image_patch_array, lpa, coord_patch_array, mask_patch_array, _, index in iace.generateData():
+            if isMasked(mask_patch_array):
+                input_array_list = [image_patch_array, coord_patch_array]
+                segmented_array = segmenter.forward(input_array_list)
 
-        #image_array = image_array.transpose(2, 0, 1)
-        while image_array.ndim < 5:
-            image_array = image_array[np.newaxis, ...]
+                iace.insertToPredictedArray(index, segmented_array)
 
-        while coordinate_array.ndim < 5:
-            coordinate_array = coordinate_array[np.newaxis, ...]
+            pbar.update(1)
 
-        image_array = torch.from_numpy(image_array).to(device, dtype=torch.float)
-        coordinate_array = torch.from_numpy(coordinate_array).to(device, dtype=torch.float)
+    segmented = iace.outputRestoredImage()
 
-        segmented_array = model(image_array, coordinate_array)
-        segmented_array = segmented_array.to("cpu").detach().numpy().astype(np.float)
-        segmented_array = np.squeeze(segmented_array)
-        segmented_array = np.argmax(segmented_array, axis=0).astype(np.uint8)
-        #segmented_array = segmented_array.transpose(1, 2, 0)
+    save_path = Path(args.save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
 
-        segmented_array_list.append(segmented_array)
-
-    """ Restore module. """
-    segmented = iace.restore(segmented_array_list)
-
-    createParentPath(args.save_path)
-    print("Saving image to {}".format(args.save_path))
-    sitk.WriteImage(segmented, args.save_path, True)
-
+    print("Saving image to {}".format(str(save_path)))
+    sitk.WriteImage(segmented, str(save_path), True)
 
 if __name__ == '__main__':
     args = ParseArgs()
