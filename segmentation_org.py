@@ -7,11 +7,10 @@ from pathlib import Path
 from tqdm import tqdm
 import torch
 import cloudpickle
+from utils.machineLearning.segmentation import Segmenter
 from utils.utils import getImageWithMeta, getSizeFromString, isMasked
 from imageAndCoordinateExtractor import ImageAndCoordinateExtractor
 from utils.coordinateProcessing.centerOfGravityCalculater import CenterOfGravityCalculater
-from utils.machineLearning.predict import Predictor
-from model.UNet_no_pad_input_coord_with_nonmask.transform import UNetTransform
 
 
 def ParseArgs():
@@ -73,22 +72,21 @@ def main(args):
 
     model.eval()
 
-    """ For preprocessing images fed to model. """
-    transform = UNetTransform()
-
     """ Segmentation module. """
     use_cuda = torch.cuda.is_available() and True
     device = torch.device("cuda" if use_cuda else "cpu")
-
-    """ For pre-processing and post-processing for segmentation. """
-    predictor = Predictor(model, device=device)
+    segmenter = Segmenter(
+                    model,
+                    num_input_array = 2,
+                    ndim = 5,
+                    device = device
+                    )
 
     with tqdm(total=iace.__len__(), ncols=60, desc="Segmenting and restoring...") as pbar:
-        for image_patch_array, label_patch_array, coord_patch_array, mask_patch_array, _, index in iace.generateData():
+        for image_patch_array, lpa, coord_patch_array, mask_patch_array, _, index in iace.generateData():
             if isMasked(mask_patch_array):
                 input_array_list = [image_patch_array, coord_patch_array]
-                input_array_list, _ = transform("test", input_array_list, label_patch_array)
-                segmented_array = predictor(input_array_list)
+                segmented_array = segmenter.forward(input_array_list)
 
                 iace.insertToPredictedArray(index, segmented_array)
 
