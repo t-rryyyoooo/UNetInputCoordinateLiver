@@ -203,4 +203,9 @@ echo "---------- Logging ----------"
 python3 logger.py ${JSON_FILE}
 echo Done.
 
+readonly IP_ADDR=`hostname -I | cut -d ' ' -f1`
+JSON_SAVE_NAME="${IP_ADDR}.json"
+JSON_SAVE_PATH="${LOG_PATH}/${JSON_SAVE_NAME}"
+echo "Json file is copied to ${JSON_SAVE_PATH}"
 
+cp ${JSON_FILE} ${JSON_SAVE_PATH}
