@@ -4,12 +4,13 @@ import pytorch_lightning as pl
 import json
 import argparse
 from pathlib import Path
+import time
 import sys
 sys.path.append("..")
+from pytorch_lightning.loggers import TensorBoardLogger
 from model.UNet_no_pad_input_coord_with_nonmask.system import UNetSystem
 from model.UNet_no_pad_input_coord_with_nonmask.modelCheckpoint import BestAndLatestModelCheckpoint as checkpoint
 from utils.utils import sendToLineNotify
-import time
 
 def parseArgs():
     parser = argparse.ArgumentParser()
@@ -31,11 +32,6 @@ def parseArgs():
     parser.add_argument("--num_workers", help="Default 6.", type=int, default=6)
     parser.add_argument("--epoch", help="Default 50.", type=int, default=50)
     parser.add_argument("--gpu_ids", help="Default 0.", type=int, default=0, nargs="*")
-
-    parser.add_argument("--api_key", help="Your comet.ml API key.")
-    parser.add_argument("--project_name", help="Project name log is saved.")
-    parser.add_argument("--experiment_name", help="Experiment name.", default="3DU-Net")
-
 
     args = parser.parse_args()
 
@@ -70,32 +66,16 @@ def main(args):
             checkpoint = checkpoint(args.model_savepath)
             )
 
-    if args.api_key != "No": 
-        from pytorch_lightning.loggers import CometLogger
-        comet_logger = CometLogger(
-                api_key = args.api_key,
-                project_name =args. project_name,  
-                experiment_name = args.experiment_name,
-                save_dir = args.log
-        )
+    logger = TensorBoardLogger(args.model_savepath)
 
-        trainer = pl.Trainer(
-                num_sanity_val_steps = 0, 
-                max_epochs = args.epoch,
-                checkpoint_callback = None, 
-                logger = comet_logger,
-                gpus = args.gpu_ids,
-                reload_dataloaders_every_epoch = True
-            )
- 
-    else:
-        trainer = pl.Trainer(
-                num_sanity_val_steps = 0, 
-                max_epochs = args.epoch,
-                checkpoint_callback = None, 
-                gpus = args.gpu_ids,
-                reload_dataloaders_every_epoch = True
-            )
+    trainer = pl.Trainer(
+            num_sanity_val_steps = 0, 
+            max_epochs = args.epoch,
+            checkpoint_callback = None, 
+            logger = logger,
+            gpus = args.gpu_ids,
+            reload_dataloaders_every_epoch = True
+        )
  
     trainer.fit(system)
 

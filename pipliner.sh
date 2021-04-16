@@ -45,9 +45,6 @@ readonly EPOCH=$(cat ${JSON_FILE} | jq -r ".epoch")
 readonly TRAIN_MASK_NONMASK_RATE=$(cat ${JSON_FILE} | jq -r ".train_mask_nonmask_rate")
 readonly VAL_MASK_NONMASK_RATE=$(cat ${JSON_FILE} | jq -r ".val_mask_nonmask_rate")
 readonly GPU_IDS=$(cat ${JSON_FILE} | jq -r ".gpu_ids")
-readonly API_KEY=$(cat ${JSON_FILE} | jq -r ".api_key")
-readonly PROJECT_NAME=$(cat ${JSON_FILE} | jq -r ".project_name")
-readonly EXPERIMENT_NAME=$(cat ${JSON_FILE} | jq -r ".experiment_name")
 
 # Segmentation input
 readonly DATA_DIRECTORY=$(eval echo $(cat ${JSON_FILE} | jq -r ".data_directory"))
@@ -114,11 +111,8 @@ do
   echo "NUM_WORKERS:${NUM_WORKERS}"
   echo "EPOCH:${EPOCH}"
   echo "GPU_IDS:${GPU_IDS}"
-  echo "API_KEY:${API_KEY}"
-  echo "PROJECT_NAME:${PROJECT_NAME}"
-  echo "EXPERIMENT_NAME:${experiment_name}"
 
-  python3 train.py ${dataset_mask_path} ${dataset_nonmask_path} ${model_savepath} --train_list ${TRAIN_LIST} --val_list ${VAL_LIST} --train_mask_nonmask_rate ${TRAIN_MASK_NONMASK_RATE} --val_mask_nonmask_rate ${VAL_MASK_NONMASK_RATE} --log ${log} --in_channel_img ${IN_CHANNEL_IMG} --in_channel_coord ${IN_CHANNEL_COORD} --num_class ${NUM_CLASS} --lr ${LEARNING_RATE} --batch_size ${BATCH_SIZE} --num_workers ${NUM_WORKERS} --epoch ${EPOCH} --gpu_ids ${GPU_IDS} --api_key ${API_KEY} --project_name ${PROJECT_NAME} --experiment_name ${experiment_name} --dropout ${DROPOUT}
+  python3 train.py ${dataset_mask_path} ${dataset_nonmask_path} ${model_savepath} --train_list ${TRAIN_LIST} --val_list ${VAL_LIST} --train_mask_nonmask_rate ${TRAIN_MASK_NONMASK_RATE} --val_mask_nonmask_rate ${VAL_MASK_NONMASK_RATE} --log ${log} --in_channel_img ${IN_CHANNEL_IMG} --in_channel_coord ${IN_CHANNEL_COORD} --num_class ${NUM_CLASS} --lr ${LEARNING_RATE} --batch_size ${BATCH_SIZE} --num_workers ${NUM_WORKERS} --epoch ${EPOCH} --gpu_ids ${GPU_IDS} --dropout ${DROPOUT}
 
    if [ $? -ne 0 ];then
     exit 1
